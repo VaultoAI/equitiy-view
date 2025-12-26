@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { Token } from '@/lib/pools/types';
 
 interface CreateLiquidityState {
@@ -38,29 +38,29 @@ export function CreateLiquidityProvider({ children }: { children: ReactNode }) {
     priceRange: undefined,
   });
 
-  const setTokenA = (token: Token | null) => {
+  const setTokenA = useCallback((token: Token | null) => {
     setState((prev) => ({ ...prev, tokenA: token }));
-  };
+  }, []);
 
-  const setTokenB = (token: Token | null) => {
+  const setTokenB = useCallback((token: Token | null) => {
     setState((prev) => ({ ...prev, tokenB: token }));
-  };
+  }, []);
 
-  const setAmountA = (amount: string) => {
+  const setAmountA = useCallback((amount: string) => {
     setState((prev) => ({ ...prev, amountA: amount }));
-  };
+  }, []);
 
-  const setAmountB = (amount: string) => {
+  const setAmountB = useCallback((amount: string) => {
     setState((prev) => ({ ...prev, amountB: amount }));
-  };
+  }, []);
 
-  const setFeeTier = (feeTier: number | undefined) => {
+  const setFeeTier = useCallback((feeTier: number | undefined) => {
     setState((prev) => ({ ...prev, feeTier }));
-  };
+  }, []);
 
-  const setPriceRange = (priceRange: { lower: number; upper: number } | undefined) => {
+  const setPriceRange = useCallback((priceRange: { lower: number; upper: number } | undefined) => {
     setState((prev) => ({ ...prev, priceRange }));
-  };
+  }, []);
 
   const reset = () => {
     setState({

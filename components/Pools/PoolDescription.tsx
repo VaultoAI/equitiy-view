@@ -1,6 +1,7 @@
 'use client';
 
 import { Token } from '@/lib/pools/types';
+import { TokenLogo } from '@/components/TokenLogo';
 
 interface PoolDescriptionProps {
   token0: Token;
@@ -11,11 +12,11 @@ export function PoolDescription({ token0, token1 }: PoolDescriptionProps) {
   return (
     <div className="flex items-center gap-2">
       <div className="flex items-center gap-1">
-        <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold">
-          {token0.symbol[0]}
+        <div className="relative">
+          <TokenLogo token={token0} size={24} />
         </div>
-        <div className="w-6 h-6 rounded-full bg-gray-400 flex items-center justify-center text-xs font-semibold -ml-2">
-          {token1.symbol[0]}
+        <div className="relative -ml-2">
+          <TokenLogo token={token1} size={24} />
         </div>
       </div>
       <span className="font-medium">

@@ -1,11 +1,23 @@
-import Link from 'next/link';
+'use client';
+
+import { useState } from 'react';
 import Image from 'next/image';
 import { WalletConnect } from '@/components/WalletConnect';
+import { PoolTable } from '@/components/Pools/PoolTable';
+import { useTokenizedStockPools } from '@/hooks/useTokenizedStockPools';
+import { PoolSortFields, PoolTableSortState } from '@/lib/pools/types';
 
 export default function Home() {
+  const [sortState] = useState<PoolTableSortState>({
+    sortBy: PoolSortFields.TVL,
+    sortDirection: 'desc',
+  });
+
+  const { pools, loading, error } = useTokenizedStockPools(sortState);
+
   return (
     <div className="min-h-screen p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <Image 
             src="/vaulto.png" 
@@ -16,18 +28,8 @@ export default function Home() {
           />
           <WalletConnect />
         </div>
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-semibold mb-4">Vaulto Liquidity Provider</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
-            Provide liquidity to Uniswap pools and earn fees
-          </p>
-          <Link
-            href="/pools"
-            className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-          >
-            View Pools
-          </Link>
-        </div>
+        
+        <PoolTable pools={pools} loading={loading} error={error} />
       </div>
     </div>
   );

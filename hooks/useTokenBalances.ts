@@ -1,10 +1,12 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useQuery } from '@tanstack/react-query';
 import { TokenBalance } from '@/lib/pools/types';
 import { getTokenTransfers, getUniqueTokensFromTransfers, TokenInfo } from '@/lib/etherscan/client';
 import { getWalletTokensCache, setWalletTokensCache } from '@/lib/cache/walletCache';
+import { getTokenLogoUrl } from '@/lib/utils/tokenLogo';
 
 type TokenBalances = {
   [tokenAddress: string]: { usdValue: number; balance: number };
@@ -92,6 +94,7 @@ export function useTokenBalances() {
             decimals: token.decimals,
             address: token.address,
             chain: 'ETHEREUM',
+            logoURI: getTokenLogoUrl(token.address, 1),
           },
         },
         quantity: balance,
@@ -100,9 +103,12 @@ export function useTokenBalances() {
     });
   }
 
-  if (balanceList.length > 0) {
-    console.log(`📊 [Token Balances] Processed ${balanceList.length} tokens into balance list`);
-  }
+  // Only log when balanceList length changes, not on every render
+  useEffect(() => {
+    if (balanceList.length > 0) {
+      console.log(`📊 [Token Balances] Processed ${balanceList.length} tokens into balance list`);
+    }
+  }, [balanceList.length]);
 
   return {
     balanceMap,

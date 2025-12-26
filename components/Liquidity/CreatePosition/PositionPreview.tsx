@@ -29,13 +29,13 @@ export function PositionPreview({
       <h3 className="font-semibold mb-3">Position Preview</h3>
       <div className="space-y-2 text-sm">
         <div className="flex justify-between">
-          <span className="text-gray-600 dark:text-gray-400">Token A:</span>
+          <span className="text-gray-600 dark:text-gray-400">{tokenA.name || tokenA.symbol}:</span>
           <span className="font-medium">
             {amountA} {tokenA.symbol}
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-600 dark:text-gray-400">Token B:</span>
+          <span className="text-gray-600 dark:text-gray-400">{tokenB.name || tokenB.symbol}:</span>
           <span className="font-medium">
             {amountB} {tokenB.symbol}
           </span>

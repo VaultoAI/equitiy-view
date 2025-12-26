@@ -7,6 +7,7 @@ export interface Token {
   decimals: number;
   address: string;
   chain: string;
+  logoURI?: string;
 }
 
 export interface TokenBalance {
@@ -54,6 +55,7 @@ export interface PoolData {
   };
   txCount?: number;
   hookAddress?: string;
+  tvlHistory?: TVLDataPoint[];
 }
 
 export enum PoolSortFields {
@@ -73,4 +75,9 @@ export type PoolTableSortState = {
 
 // Alias for backward compatibility
 export type PoolToken = Token;
+
+export interface TVLDataPoint {
+  date: number;
+  tvlUSD: number;
+}
 

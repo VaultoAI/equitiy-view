@@ -5,6 +5,7 @@ import { usePoolData } from '@/hooks/usePoolData';
 import { PoolDetailsHeader } from '@/components/Pools/PoolDetails/PoolDetailsHeader';
 import { PoolDetailsStats } from '@/components/Pools/PoolDetails/PoolDetailsStats';
 import { PoolDetailsStatsButtons } from '@/components/Pools/PoolDetails/PoolDetailsStatsButtons';
+import { TVLChart } from '@/components/Pools/PoolDetails/TVLChart';
 import { WalletConnect } from '@/components/WalletConnect';
 import { useAccount } from 'wagmi';
 import { CreateLiquidityProvider } from '@/contexts/CreateLiquidityContext';
@@ -48,6 +49,7 @@ function PoolDetailsContent() {
             <PoolDetailsHeader poolData={poolData} loading={loading} />
             <PoolDetailsStats poolData={poolData} loading={loading} />
             <PoolDetailsStatsButtons poolData={poolData} loading={loading} />
+            <TVLChart poolData={poolData} loading={loading} />
             <AddLiquidityForm
               token0={poolData.token0}
               token1={poolData.token1}

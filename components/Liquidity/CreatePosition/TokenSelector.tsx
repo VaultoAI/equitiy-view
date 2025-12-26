@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Token } from '@/lib/pools/types';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
+import { TokenLogo } from '@/components/TokenLogo';
 
 interface TokenSelectorProps {
   label: string;
@@ -27,7 +28,10 @@ export function TokenSelector({ label, selectedToken, onSelect, excludeToken }: 
           onClick={() => setIsOpen(!isOpen)}
           className="w-full px-4 py-3 border rounded-lg flex items-center justify-between hover:border-blue-500"
         >
-          <span>{selectedToken ? `${selectedToken.symbol} - ${selectedToken.name}` : 'Select token'}</span>
+          <div className="flex items-center gap-2">
+            {selectedToken && <TokenLogo token={selectedToken} size={24} />}
+            <span>{selectedToken ? `${selectedToken.symbol} - ${selectedToken.name}` : 'Select token'}</span>
+          </div>
           <span>▼</span>
         </button>
         {isOpen && (
@@ -39,10 +43,13 @@ export function TokenSelector({ label, selectedToken, onSelect, excludeToken }: 
                   onSelect(token);
                   setIsOpen(false);
                 }}
-                className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
               >
-                <div className="font-medium">{token.symbol}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">{token.name}</div>
+                <TokenLogo token={token} size={24} />
+                <div>
+                  <div className="font-medium">{token.symbol}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{token.name}</div>
+                </div>
               </button>
             ))}
           </div>

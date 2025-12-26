@@ -8,6 +8,13 @@ const nextConfig = {
       net: false,
       tls: false,
     };
+    
+    // Suppress warnings for optional dependencies that aren't needed in web builds
+    config.ignoreWarnings = [
+      { module: /node_modules\/@metamask\/sdk/ },
+      { module: /node_modules\/pino/ },
+    ];
+    
     return config;
   },
 };

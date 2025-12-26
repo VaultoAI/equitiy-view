@@ -6,6 +6,7 @@ import { apolloClient } from '@/lib/graphql/client';
 import { TablePool } from '@/lib/pools/types';
 import { calculate1DVolOverTvl, calculateApr, sortPools } from '@/lib/pools/utils';
 import { PoolTableSortState, PoolSortFields } from '@/lib/pools/types';
+import { getTokenLogoUrl } from '@/lib/utils/tokenLogo';
 
 const DEFAULT_QUERY_SIZE = 20;
 const V2_DEFAULT_FEE_TIER = 3000;
@@ -195,6 +196,9 @@ export function usePoolsFromTokenAddress({
         return sum + parseFloat(day.feesUSD || '0');
       }, 0);
 
+      const token0Address = pool.token0.id.split('-')[0];
+      const token1Address = pool.token1.id.split('-')[0];
+
       return {
         hash: pool.id,
         token0: {
@@ -202,16 +206,18 @@ export function usePoolsFromTokenAddress({
           name: pool.token0.name,
           symbol: pool.token0.symbol,
           decimals: pool.token0.decimals,
-          address: pool.token0.id.split('-')[0],
+          address: token0Address,
           chain: 'ETHEREUM',
+          logoURI: getTokenLogoUrl(token0Address, chainId),
         },
         token1: {
           id: pool.token1.id,
           name: pool.token1.name,
           symbol: pool.token1.symbol,
           decimals: pool.token1.decimals,
-          address: pool.token1.id.split('-')[0],
+          address: token1Address,
           chain: 'ETHEREUM',
+          logoURI: getTokenLogoUrl(token1Address, chainId),
         },
         tvl,
         volume24h,

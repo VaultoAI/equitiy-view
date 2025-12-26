@@ -8,6 +8,7 @@ import { useTokenBalances } from './useTokenBalances';
 import { TablePool, PoolTableSortState, PoolSortFields } from '@/lib/pools/types';
 import { isTokenizedStock } from '@/lib/pools/tokenizedStocks';
 import { calculate1DVolOverTvl, calculateApr } from '@/lib/pools/utils';
+import { getTokenLogoUrl } from '@/lib/utils/tokenLogo';
 
 const DEFAULT_QUERY_SIZE = 20;
 const DEFAULT_TICK_SPACING = 60;
@@ -173,6 +174,9 @@ export function useWalletPools(sortState: PoolTableSortState = {
               return sum + parseFloat(day.feesUSD || '0');
             }, 0);
 
+            const token0Address = pool.token0.id.split('-')[0];
+            const token1Address = pool.token1.id.split('-')[0];
+
             return {
               hash: pool.id,
               token0: {
@@ -180,16 +184,18 @@ export function useWalletPools(sortState: PoolTableSortState = {
                 name: pool.token0.name,
                 symbol: pool.token0.symbol,
                 decimals: pool.token0.decimals,
-                address: pool.token0.id.split('-')[0],
+                address: token0Address,
                 chain: 'ETHEREUM',
+                logoURI: getTokenLogoUrl(token0Address, 1),
               },
               token1: {
                 id: pool.token1.id,
                 name: pool.token1.name,
                 symbol: pool.token1.symbol,
                 decimals: pool.token1.decimals,
-                address: pool.token1.id.split('-')[0],
+                address: token1Address,
                 chain: 'ETHEREUM',
+                logoURI: getTokenLogoUrl(token1Address, 1),
               },
               tvl,
               volume24h,
