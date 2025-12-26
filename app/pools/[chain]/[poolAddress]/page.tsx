@@ -7,14 +7,12 @@ import { PoolDetailsStats } from '@/components/Pools/PoolDetails/PoolDetailsStat
 import { PoolDetailsStatsButtons } from '@/components/Pools/PoolDetails/PoolDetailsStatsButtons';
 import { TVLChart } from '@/components/Pools/PoolDetails/TVLChart';
 import { WalletConnect } from '@/components/WalletConnect';
-import { useAccount } from 'wagmi';
 import { CreateLiquidityProvider } from '@/contexts/CreateLiquidityContext';
 import { AddLiquidityForm } from '@/components/Liquidity/CreatePosition/AddLiquidityForm';
 
 function PoolDetailsContent() {
   const params = useParams();
   const poolAddress = params.poolAddress as string;
-  const { isConnected } = useAccount();
 
   const { data: poolData, loading, error } = usePoolData(poolAddress);
 
@@ -26,13 +24,7 @@ function PoolDetailsContent() {
           <WalletConnect />
         </div>
 
-        {!isConnected ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Connect your wallet to view pool details
-            </p>
-          </div>
-        ) : loading ? (
+        {loading ? (
           <div className="text-center py-12">
             <div className="text-gray-500">Loading pool data...</div>
           </div>
