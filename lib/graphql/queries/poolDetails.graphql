@@ -1,0 +1,29 @@
+query PoolDetails($poolId: ID!) {
+  pool(id: $poolId) {
+    id
+    token0 {
+      id
+      symbol
+      name
+      decimals
+    }
+    token1 {
+      id
+      symbol
+      name
+      decimals
+    }
+    feeTier
+    totalValueLockedUSD
+    txCount
+    poolDayData(
+      orderBy: date
+      orderDirection: desc
+      first: 30
+    ) {
+      date
+      volumeUSD
+    }
+  }
+}
+

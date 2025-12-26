@@ -1,0 +1,27 @@
+query PortfolioBalances($ownerAddress: String!, $chains: [Chain!]!) {
+  portfolios(ownerAddresses: [$ownerAddress], chains: $chains) {
+    id
+    ownerAddress
+    tokensTotalDenominatedValue {
+      value
+    }
+    tokenBalances {
+      id
+      quantity
+      denominatedValue {
+        value
+        currency
+      }
+      token {
+        id
+        name
+        symbol
+        decimals
+        address
+        chain
+        standard
+      }
+    }
+  }
+}
+
