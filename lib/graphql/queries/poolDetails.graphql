@@ -23,6 +23,7 @@ query PoolDetails($poolId: ID!) {
     ) {
       date
       volumeUSD
+      feesUSD
     }
   }
 }

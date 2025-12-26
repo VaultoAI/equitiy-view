@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi';
 import { useQuery } from '@tanstack/react-query';
 import { TokenBalance } from '@/lib/pools/types';
 import { getTokenTransfers, getUniqueTokensFromTransfers, TokenInfo } from '@/lib/etherscan/client';
+import { getWalletTokensCache, setWalletTokensCache } from '@/lib/cache/walletCache';
 
 type TokenBalances = {
   [tokenAddress: string]: { usdValue: number; balance: number };
@@ -13,14 +14,21 @@ export function useTokenBalances() {
   const { address, isConnected } = useAccount();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['tokenBalances', address],
+    queryKey: ['tokenBalances', address, 'v1'],
     queryFn: async () => {
       if (!address) {
         console.log('🔍 [Token Balances] No address provided, returning empty');
         return { tokens: [] };
       }
 
-      console.log('🔍 [Token Balances] Fetching tokens for address:', address);
+      // Check cache first
+      const cachedTokens = getWalletTokensCache(address);
+      if (cachedTokens !== null) {
+        console.log(`✅ [Token Balances] Using cached tokens for address ${address} (${cachedTokens.length} tokens)`);
+        return { tokens: cachedTokens };
+      }
+
+      console.log('🔍 [Token Balances] Cache miss or expired, fetching tokens for address:', address);
       
       try {
         // Step 1: Get all token transfers
@@ -28,14 +36,20 @@ export function useTokenBalances() {
         
         if (transfers.length === 0) {
           console.log('⚠️ [Token Balances] No token transfers found');
+          // Cache empty result to avoid repeated API calls
+          setWalletTokensCache(address, []);
           return { tokens: [] };
         }
 
         // Step 2: Extract unique tokens and get current balances
         const tokens = await getUniqueTokensFromTransfers(transfers, address);
         
+        // Update cache with fetched tokens
+        setWalletTokensCache(address, tokens);
+        
         const tokenCount = tokens.length;
         console.log(`✅ [Token Balances] Found ${tokenCount} tokens with non-zero balance for address ${address}`);
+        console.log(`💾 [Token Balances] Cached ${tokenCount} tokens for 24 hours`);
         
         if (tokenCount > 0) {
           console.log('📋 [Token Balances] Token list:');
@@ -55,7 +69,7 @@ export function useTokenBalances() {
       }
     },
     enabled: isConnected && !!address,
-    staleTime: 60000, // Cache for 1 minute
+    staleTime: 24 * 60 * 60 * 1000, // Cache for 24 hours (matches localStorage cache duration)
   });
 
   const balanceMap: TokenBalances = {};

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { TablePool, PoolSortFields, PoolTableSortState } from '@/lib/pools/types';
 import { PoolTableRow } from './PoolTableRow';
 import { formatCurrency, formatPercent } from '@/lib/utils/formatting';
+import { sortPools } from '@/lib/pools/utils';
 
 interface PoolTableProps {
   pools: TablePool[];
@@ -72,13 +73,14 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
         <thead>
           <tr className="border-b bg-gray-50 dark:bg-gray-900">
             <th className="px-4 py-3 text-left text-sm font-semibold">Pool</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold">Protocol</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold">Fee Tier</th>
             <th className="px-4 py-3 text-left text-sm font-semibold">
               <SortButton field={PoolSortFields.TVL}>TVL</SortButton>
             </th>
             <th className="px-4 py-3 text-left text-sm font-semibold">
-              <SortButton field={PoolSortFields.Apr}>APR</SortButton>
+              <SortButton field={PoolSortFields.FeeTier}>Fee Tier</SortButton>
+            </th>
+            <th className="px-4 py-3 text-left text-sm font-semibold">
+              <SortButton field={PoolSortFields.Fees24h}>Fees 24h</SortButton>
             </th>
             <th className="px-4 py-3 text-left text-sm font-semibold">
               <SortButton field={PoolSortFields.Volume24h}>Volume 24h</SortButton>
@@ -87,12 +89,12 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
               <SortButton field={PoolSortFields.Volume30D}>Volume 30d</SortButton>
             </th>
             <th className="px-4 py-3 text-left text-sm font-semibold">
-              <SortButton field={PoolSortFields.VolOverTvl}>Vol/TVL</SortButton>
+              <SortButton field={PoolSortFields.Apr}>APR</SortButton>
             </th>
           </tr>
         </thead>
         <tbody>
-          {pools.map((pool) => (
+          {sortPools(pools, sortState).map((pool) => (
             <PoolTableRow key={pool.hash} pool={pool} />
           ))}
         </tbody>
@@ -100,4 +102,5 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
     </div>
   );
 }
+
 

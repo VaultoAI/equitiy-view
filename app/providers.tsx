@@ -10,7 +10,14 @@ import '@rainbow-me/rainbowkit/styles.css';
 import { useState } from 'react';
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 5 * 60 * 1000, // Default 5 minutes for general queries
+        gcTime: 24 * 60 * 60 * 1000, // Keep cache for 24 hours (formerly cacheTime)
+      },
+    },
+  }));
 
   return (
     <WagmiProvider config={config}>

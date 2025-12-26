@@ -6,7 +6,7 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Vaulto Earn - Uniswap Liquidity Provider',
+  title: 'Vaulto Liquidity Provider',
   description: 'Provide liquidity to Uniswap pools and earn fees',
 };
 
@@ -23,4 +23,5 @@ export default function RootLayout({
     </html>
   );
 }
+
 

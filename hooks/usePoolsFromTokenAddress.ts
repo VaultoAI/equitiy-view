@@ -32,6 +32,7 @@ interface PoolResponse {
     poolDayData: Array<{
       date: number;
       volumeUSD: string;
+      feesUSD: string;
     }>;
   }>;
 }
@@ -72,6 +73,7 @@ const TOP_V3_POOLS_QUERY = gql`
       ) {
         date
         volumeUSD
+        feesUSD
       }
     }
   }
@@ -158,18 +160,39 @@ export function usePoolsFromTokenAddress({
     data?.pools?.map((pool) => {
       const tvl = parseFloat(pool.totalValueLockedUSD || '0');
       
-      // Calculate 24h and 30d volumes from poolDayData
+      // Calculate 24h and 30d volumes and fees from poolDayData
       // poolDayData is ordered by date descending (most recent first)
       const dayData = pool.poolDayData || [];
       
-      // 24h volume: most recent day's volume
+      // 24h volume: most recent day's volume (first item in array)
       const volume24h = dayData.length > 0 
         ? parseFloat(dayData[0].volumeUSD || '0')
         : 0;
       
+      // 24h fees: most recent day's fees (first item in array)
+      const fees24h = dayData.length > 0
+        ? parseFloat(dayData[0].feesUSD || '0')
+        : 0;
+      
+      // Log for debugging
+      if (dayData.length > 0) {
+        console.log(`📊 [Pool ${pool.id}] 24h data from API:`, {
+          date: dayData[0].date,
+          volumeUSD: dayData[0].volumeUSD,
+          feesUSD: dayData[0].feesUSD,
+          parsedVolume24h: volume24h,
+          parsedFees24h: fees24h,
+        });
+      }
+      
       // 30d volume: sum of last 30 days (or all available days if less than 30)
       const volume30d = dayData.reduce((sum, day) => {
         return sum + parseFloat(day.volumeUSD || '0');
+      }, 0);
+      
+      // 30d fees: sum of last 30 days (or all available days if less than 30)
+      const fees30d = dayData.reduce((sum, day) => {
+        return sum + parseFloat(day.feesUSD || '0');
       }, 0);
 
       return {
@@ -193,11 +216,12 @@ export function usePoolsFromTokenAddress({
         tvl,
         volume24h,
         volume30d,
-        volOverTvl: calculate1DVolOverTvl(volume24h, tvl),
+        fees24h,
+        fees30d,
+        volOverTvl: undefined, // Not used anymore
         apr: calculateApr({
-          volume24h,
+          fees30d,
           tvl,
-          feeTier: pool.feeTier,
         }),
         feeTier: {
           feeAmount: pool.feeTier,

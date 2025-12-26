@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { gql } from '@apollo/client';
 import { apolloClient } from '@/lib/graphql/client';
 import { PoolData, Token } from '@/lib/pools/types';
-import { calculateApr } from '@/lib/pools/utils';
 
 interface PoolDetailsResponse {
   pool: {
@@ -27,6 +26,7 @@ interface PoolDetailsResponse {
     poolDayData: Array<{
       date: number;
       volumeUSD: string;
+      feesUSD: string;
     }>;
   };
 }
@@ -57,6 +57,7 @@ const POOL_DETAILS_QUERY = gql`
       ) {
         date
         volumeUSD
+        feesUSD
       }
     }
   }
@@ -99,11 +100,40 @@ export function usePoolData(poolIdOrAddress: string) {
   const pool = data.pool;
   const tvlUSD = parseFloat(pool.totalValueLockedUSD || '0');
   
-  // Calculate 24h volume from poolDayData (most recent day)
+  // Calculate 24h and 30d volume and fees from poolDayData
+  // poolDayData is ordered by date descending (most recent first)
   const dayData = pool.poolDayData || [];
+  
+  // 24h volume: most recent day's volume (first item in array)
   const volumeUSD24H = dayData.length > 0 
     ? parseFloat(dayData[0].volumeUSD || '0')
     : 0;
+  
+  // 24h fees: most recent day's fees (first item in array)
+  const feesUSD24H = dayData.length > 0
+    ? parseFloat(dayData[0].feesUSD || '0')
+    : 0;
+  
+  // Log for debugging
+  if (dayData.length > 0) {
+    console.log(`📊 [Pool Details ${pool.id}] 24h data from API:`, {
+      date: dayData[0].date,
+      volumeUSD: dayData[0].volumeUSD,
+      feesUSD: dayData[0].feesUSD,
+      parsedVolume24H: volumeUSD24H,
+      parsedFees24H: feesUSD24H,
+    });
+  }
+  
+  // 30d volume: sum of last 30 days (or all available days if less than 30)
+  const volumeUSD30D = dayData.reduce((sum, day) => {
+    return sum + parseFloat(day.volumeUSD || '0');
+  }, 0);
+  
+  // 30d fees: sum of last 30 days (or all available days if less than 30)
+  const feesUSD30D = dayData.reduce((sum, day) => {
+    return sum + parseFloat(day.feesUSD || '0');
+  }, 0);
 
   const poolData: PoolData = {
     idOrAddress: pool.id,
@@ -126,6 +156,9 @@ export function usePoolData(poolIdOrAddress: string) {
     },
     tvlUSD,
     volumeUSD24H,
+    feesUSD24H,
+    volumeUSD30D,
+    feesUSD30D,
     feeTier: {
       feeAmount: pool.feeTier,
       tickSpacing: 60,

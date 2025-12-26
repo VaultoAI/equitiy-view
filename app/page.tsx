@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { WalletConnect } from '@/components/WalletConnect';
 
 export default function Home() {
@@ -6,11 +7,17 @@ export default function Home() {
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Vaulto Earn</h1>
+          <Image 
+            src="/vaulto.png" 
+            alt="Vaulto" 
+            width={150} 
+            height={50}
+            className="h-12 w-auto"
+          />
           <WalletConnect />
         </div>
         <div className="text-center py-12">
-          <h2 className="text-2xl font-semibold mb-4">Uniswap Liquidity Provider</h2>
+          <h2 className="text-2xl font-semibold mb-4">Vaulto Liquidity Provider</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-8">
             Provide liquidity to Uniswap pools and earn fees
           </p>
@@ -25,4 +32,5 @@ export default function Home() {
     </div>
   );
 }
+
 

@@ -21,7 +21,7 @@ export function PoolTableRow({ pool, chainId = 1 }: PoolTableRowProps) {
           <PoolDescription token0={pool.token0} token1={pool.token1} />
         </Link>
       </td>
-      <td className="px-4 py-3 text-sm">{pool.protocolVersion}</td>
+      <td className="px-4 py-3 text-sm font-medium">{formatCurrency(pool.tvl)}</td>
       <td className="px-4 py-3 text-sm">
         {pool.feeTier
           ? pool.feeTier.isDynamic
@@ -29,14 +29,12 @@ export function PoolTableRow({ pool, chainId = 1 }: PoolTableRowProps) {
             : `${pool.feeTier.feeAmount / 10000}%`
           : '-'}
       </td>
-      <td className="px-4 py-3 text-sm font-medium">{formatCurrency(pool.tvl)}</td>
-      <td className="px-4 py-3 text-sm">{formatPercent(pool.apr.toSignificant(2))}</td>
+      <td className="px-4 py-3 text-sm">{formatCurrency(pool.fees24h || 0)}</td>
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume24h)}</td>
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume30d)}</td>
-      <td className="px-4 py-3 text-sm">
-        {pool.volOverTvl ? pool.volOverTvl.toFixed(2) : '-'}
-      </td>
+      <td className="px-4 py-3 text-sm">{formatPercent(pool.apr.toSignificant(2))}</td>
     </tr>
   );
 }
+
 

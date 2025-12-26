@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCreateLiquidity } from '@/contexts/CreateLiquidityContext';
-import { FixedTokenDisplay } from '@/components/Liquidity/CreatePosition/FixedTokenDisplay';
 import { DepositAmounts } from '@/components/Liquidity/CreatePosition/DepositAmounts';
 import { PositionPreview } from '@/components/Liquidity/CreatePosition/PositionPreview';
 import { useLiquidityTransaction } from '@/hooks/useLiquidityTransaction';
@@ -61,26 +60,26 @@ export function AddLiquidityForm({ token0, token1, feeTier }: AddLiquidityFormPr
     : undefined;
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg mt-8">
+    <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg mt-6">
       <h2 className="text-2xl font-bold mb-6">Add Liquidity</h2>
-      <FixedTokenDisplay label="Token A" token={token0} />
-      <FixedTokenDisplay label="Token B" token={token1} />
       <DepositAmounts
-        tokenA={state.tokenA}
-        tokenB={state.tokenB}
+        tokenA={state.tokenA || token0}
+        tokenB={state.tokenB || token1}
         amountA={state.amountA}
         amountB={state.amountB}
         onAmountAChange={setAmountA}
         onAmountBChange={setAmountB}
       />
-      <PositionPreview
-        tokenA={state.tokenA}
-        tokenB={state.tokenB}
-        amountA={state.amountA}
-        amountB={state.amountB}
-        feeTier={state.feeTier}
-        estimatedUSD={estimatedUSD}
-      />
+      <div className="mt-6">
+        <PositionPreview
+          tokenA={state.tokenA}
+          tokenB={state.tokenB}
+          amountA={state.amountA}
+          amountB={state.amountB}
+          feeTier={state.feeTier}
+          estimatedUSD={estimatedUSD}
+        />
+      </div>
       <button
         onClick={handleCreate}
         disabled={
@@ -90,11 +89,12 @@ export function AddLiquidityForm({ token0, token1, feeTier }: AddLiquidityFormPr
           !state.amountB ||
           isPending
         }
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors mt-6"
       >
         {isPending ? 'Creating Position...' : 'Create Position'}
       </button>
     </div>
   );
 }
+
 

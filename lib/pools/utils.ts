@@ -14,32 +14,27 @@ export function calculate1DVolOverTvl(
 }
 
 export function calculateApr({
-  volume24h,
+  fees30d,
   tvl,
-  feeTier,
 }: {
-  volume24h?: number;
+  fees30d?: number;
   tvl?: number;
-  feeTier?: number;
 }): Percent {
-  if (!volume24h || !feeTier || !tvl || !Math.round(tvl)) {
+  if (!fees30d || !tvl || !Math.round(tvl)) {
     return new Percent(0);
   }
-  // Calculate annual fees earned: (24h volume × fee rate × 365)
-  // Fee rate = feeTier / 1000000 (e.g., 10000 = 1% = 0.01)
-  // The fee tier is stored such that 10000 basis points = 1% fee
-  const annualFees = volume24h * (feeTier / (BIPS_BASE * 100)) * 365;
   
-  // Calculate APR as decimal: annualFees / tvl
-  const aprDecimal = annualFees / tvl;
+  // Calculate APR: (Fees 30d / 30 * 365 / TVL) * 100
+  // This annualizes the 30-day fees: (fees30d / 30) gives daily average, * 365 gives annual, / tvl gives rate, * 100 gives percentage
+  // Simplified: (fees30d * 365 / (30 * tvl)) * 100 = (fees30d * 12.167 / tvl) * 100
+  const aprPercentage = (fees30d * 365 / (30 * tvl)) * 100;
   
   // Percent class represents (numerator/denominator) * 100%
-  // To represent APR as percentage, we use basis points format
-  // Multiply by 100 to convert decimal to percentage, then use denominator of 100
-  // Result: (aprDecimal * 100) / 100 * 100% = aprDecimal * 100% = correct APR%
+  // To represent APR as percentage, we use numerator = aprPercentage, denominator = 100
+  // Result: (aprPercentage / 100) * 100% = aprPercentage%
   return new Percent(
-    Math.round(aprDecimal * 100),
-    100
+    Math.round(aprPercentage * 100), // Convert to basis points (multiply by 100 for precision)
+    10000 // Denominator of 10000 to represent percentage (10000 basis points = 100%)
   );
 }
 
@@ -49,10 +44,26 @@ export function sortPools(
 ): TablePool[] {
   return [...pools].sort((a, b) => {
     switch (sortState.sortBy) {
-      case PoolSortFields.VolOverTvl:
+      case PoolSortFields.TVL:
         return sortState.sortDirection === 'desc'
-          ? (b.volOverTvl ?? 0) - (a.volOverTvl ?? 0)
-          : (a.volOverTvl ?? 0) - (b.volOverTvl ?? 0);
+          ? b.tvl - a.tvl
+          : a.tvl - b.tvl;
+      case PoolSortFields.Apr:
+        return sortState.sortDirection === 'desc'
+          ? (b.apr.greaterThan(a.apr) ? 1 : -1)
+          : (a.apr.greaterThan(b.apr) ? 1 : -1);
+      case PoolSortFields.FeeTier:
+        const feeTierA = a.feeTier?.feeAmount ?? 0;
+        const feeTierB = b.feeTier?.feeAmount ?? 0;
+        return sortState.sortDirection === 'desc'
+          ? feeTierB - feeTierA
+          : feeTierA - feeTierB;
+      case PoolSortFields.Fees24h:
+        const fees24hA = a.fees24h ?? 0;
+        const fees24hB = b.fees24h ?? 0;
+        return sortState.sortDirection === 'desc'
+          ? fees24hB - fees24hA
+          : fees24hA - fees24hB;
       case PoolSortFields.Volume24h:
         return sortState.sortDirection === 'desc'
           ? b.volume24h - a.volume24h
@@ -61,10 +72,6 @@ export function sortPools(
         return sortState.sortDirection === 'desc'
           ? b.volume30d - a.volume30d
           : a.volume30d - b.volume30d;
-      case PoolSortFields.Apr:
-        return sortState.sortDirection === 'desc'
-          ? (b.apr.greaterThan(a.apr) ? 1 : -1)
-          : (a.apr.greaterThan(b.apr) ? 1 : -1);
       default:
         return sortState.sortDirection === 'desc'
           ? b.tvl - a.tvl

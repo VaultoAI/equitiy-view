@@ -25,3 +25,4 @@ query PortfolioBalances($ownerAddress: String!, $chains: [Chain!]!) {
   }
 }
 
+

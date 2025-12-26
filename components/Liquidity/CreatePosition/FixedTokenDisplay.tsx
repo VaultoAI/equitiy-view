@@ -24,3 +24,4 @@ export function FixedTokenDisplay({ label, token }: FixedTokenDisplayProps) {
   );
 }
 
+
