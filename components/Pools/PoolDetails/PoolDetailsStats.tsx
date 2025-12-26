@@ -35,7 +35,7 @@ export function PoolDetailsStats({ poolData, loading }: PoolDetailsStatsProps) {
       </div>
       <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">APR</div>
-        <div className="text-lg font-semibold">{formatPercent(apr.toSignificant(2))}</div>
+        <div className="text-lg font-semibold">{formatPercent(apr)}</div>
       </div>
       <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Transactions</div>

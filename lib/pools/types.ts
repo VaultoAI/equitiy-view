@@ -1,5 +1,3 @@
-import { Percent } from '@uniswap/sdk-core';
-
 export interface Token {
   id: string;
   name: string;
@@ -27,7 +25,7 @@ export interface TablePool {
   volume30d: number;
   fees24h?: number;
   fees30d?: number;
-  apr: Percent;
+  apr: number;
   volOverTvl?: number;
   feeTier?: {
     feeAmount: number;

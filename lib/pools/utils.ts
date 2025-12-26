@@ -1,4 +1,3 @@
-import { Percent } from '@uniswap/sdk-core';
 import { TablePool, PoolTableSortState, PoolSortFields } from './types';
 
 const BIPS_BASE = 10000;
@@ -19,23 +18,16 @@ export function calculateApr({
 }: {
   fees30d?: number;
   tvl?: number;
-}): Percent {
-  if (!fees30d || !tvl || !Math.round(tvl)) {
-    return new Percent(0);
+}): number {
+  if (!fees30d || !tvl || tvl === 0) {
+    return 0;
   }
   
   // Calculate APR: (Fees 30d / 30 * 365 / TVL) * 100
   // This annualizes the 30-day fees: (fees30d / 30) gives daily average, * 365 gives annual, / tvl gives rate, * 100 gives percentage
-  // Simplified: (fees30d * 365 / (30 * tvl)) * 100 = (fees30d * 12.167 / tvl) * 100
-  const aprPercentage = (fees30d * 365 / (30 * tvl)) * 100;
-  
-  // Percent class represents (numerator/denominator) * 100%
-  // To represent APR as percentage, we use numerator = aprPercentage, denominator = 100
-  // Result: (aprPercentage / 100) * 100% = aprPercentage%
-  return new Percent(
-    Math.round(aprPercentage * 100), // Convert to basis points (multiply by 100 for precision)
-    10000 // Denominator of 10000 to represent percentage (10000 basis points = 100%)
-  );
+  // Formula: (fees30d * 365 / (30 * tvl)) * 100
+  // Returns exact calculation as a number without any rounding
+  return (fees30d * 365 / (30 * tvl)) * 100;
 }
 
 export function sortPools(
@@ -50,8 +42,8 @@ export function sortPools(
           : a.tvl - b.tvl;
       case PoolSortFields.Apr:
         return sortState.sortDirection === 'desc'
-          ? (b.apr.greaterThan(a.apr) ? 1 : -1)
-          : (a.apr.greaterThan(b.apr) ? 1 : -1);
+          ? b.apr - a.apr
+          : a.apr - b.apr;
       case PoolSortFields.FeeTier:
         const feeTierA = a.feeTier?.feeAmount ?? 0;
         const feeTierB = b.feeTier?.feeAmount ?? 0;

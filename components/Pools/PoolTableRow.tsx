@@ -32,7 +32,7 @@ export function PoolTableRow({ pool, chainId = 1 }: PoolTableRowProps) {
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.fees24h || 0)}</td>
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume24h)}</td>
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume30d)}</td>
-      <td className="px-4 py-3 text-sm">{formatPercent(pool.apr.toSignificant(2))}</td>
+      <td className="px-4 py-3 text-sm">{formatPercent(pool.apr)}</td>
     </tr>
   );
 }

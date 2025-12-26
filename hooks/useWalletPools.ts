@@ -257,8 +257,8 @@ export function useWalletPools(sortState: PoolTableSortState = {
             return sortState.sortDirection === 'desc' ? b.tvl - a.tvl : a.tvl - b.tvl;
           case PoolSortFields.Apr:
             return sortState.sortDirection === 'desc'
-              ? (b.apr.greaterThan(a.apr) ? 1 : -1)
-              : (a.apr.greaterThan(b.apr) ? 1 : -1);
+              ? b.apr - a.apr
+              : a.apr - b.apr;
           case PoolSortFields.FeeTier:
             const feeTierA = a.feeTier?.feeAmount ?? 0;
             const feeTierB = b.feeTier?.feeAmount ?? 0;
@@ -312,7 +312,7 @@ export function useWalletPools(sortState: PoolTableSortState = {
         const isTokenized = poolContainsTokenizedStock(pool);
         console.log(`  ${index + 1}. ${pool.token0.symbol}/${pool.token1.symbol}${isTokenized ? ' (Tokenized Stock)' : ''}`);
         console.log(`     TVL: $${pool.tvl.toLocaleString()}`);
-        console.log(`     APR: ${pool.apr.toSignificant(2)}%`);
+        console.log(`     APR: ${pool.apr.toFixed(2)}%`);
         console.log(`     Volume 24h: $${pool.volume24h.toLocaleString()}`);
         console.log(`     Volume 30d: $${pool.volume30d.toLocaleString()}`);
       });
