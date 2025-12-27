@@ -18,8 +18,8 @@ export function PoolTableRow({ pool, chainId = 1 }: PoolTableRowProps) {
   const poolLink = `/pools/${chainName}/${pool.hash}`;
 
   return (
-    <tr className={`border-b hover:bg-gray-50 dark:hover:bg-gray-800 ${isSolana ? '' : 'cursor-pointer'}`}>
-      <td className="px-4 py-3">
+    <tr className={`border-b hover:bg-gray-50 dark:hover:bg-gray-800 group ${isSolana ? '' : 'cursor-pointer'}`}>
+      <td className="sticky left-0 z-10 bg-white dark:bg-gray-950 group-hover:bg-gray-50 dark:group-hover:bg-gray-800 px-4 py-3">
         {isSolana ? (
           <PoolDescription token0={pool.token0} token1={pool.token1} />
         ) : (

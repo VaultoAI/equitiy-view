@@ -34,7 +34,7 @@ export function PoolDetailsStats({ poolData, loading }: PoolDetailsStatsProps) {
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Volume 30d</div>
         <div className="text-lg font-semibold">{formatCurrency(poolData.volumeUSD30D || 0)}</div>
       </div>
-      <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+      <div className="hidden md:block bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Fees 30d</div>
         <div className="text-lg font-semibold">{formatCurrency(poolData.feesUSD30D || 0)}</div>
       </div>

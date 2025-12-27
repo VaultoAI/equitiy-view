@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { WalletConnect } from '@/components/WalletConnect';
+import { MobileNavBar } from '@/components/Navigation/VerticalNav';
 import { PoolTable } from '@/components/Pools/PoolTable';
 import { useWalletPools } from '@/hooks/useWalletPools';
 import { PoolSortFields, PoolTableSortState } from '@/lib/pools/types';
@@ -26,11 +27,16 @@ export default function PoolsPage() {
   }, [loading, pools.length, address, isConnected]);
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">My Pools</h1>
-          <WalletConnect />
+        <div className="flex justify-between items-center mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold">My Pools</h1>
+          {/* Mobile nav bar (includes wallet connect) */}
+          <MobileNavBar />
+          {/* Desktop wallet connect - hidden on mobile (shown in nav) */}
+          <div className="hidden md:block">
+            <WalletConnect />
+          </div>
         </div>
 
         {!isConnected ? (
@@ -41,8 +47,13 @@ export default function PoolsPage() {
                   Connect Your Wallet
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 text-lg">
-                  Connect your wallet to view and manage your liquidity pools
+                  Connect your wallet to view and
+                  <br />
+                  manage your liquidity pools
                 </p>
+              </div>
+              <div className="flex justify-center pt-2">
+                <WalletConnect />
               </div>
             </div>
           </div>

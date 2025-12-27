@@ -73,7 +73,7 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b bg-gray-50 dark:bg-gray-900">
-            <th className="px-4 py-3 text-left text-sm font-semibold">Pool</th>
+            <th className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-sm font-semibold">Pool</th>
             <th className="px-4 py-3 text-left text-sm font-semibold">
               <SortButton field={PoolSortFields.TVL}>TVL</SortButton>
             </th>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { CompactWalletConnect } from '@/components/WalletConnect';
 
 const HomeIcon = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -58,7 +59,7 @@ const SolIcon = () => (
   />
 );
 
-export function VerticalNav() {
+export function MobileNavBar() {
   const pathname = usePathname();
 
   const navItems = [
@@ -68,8 +69,8 @@ export function VerticalNav() {
   ];
 
   return (
-    <nav className="fixed left-4 top-1/2 -translate-y-1/2 z-50">
-      <div className="bg-gray-900 dark:bg-gray-950 rounded-full border border-gray-700 dark:border-gray-600 p-2 flex flex-col gap-2">
+    <nav className="md:hidden z-50">
+      <div className="bg-gray-900 dark:bg-gray-950 rounded-full border border-gray-700 dark:border-gray-600 p-1.5 flex gap-1.5">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
           const IconComponent = item.icon;
@@ -77,7 +78,7 @@ export function VerticalNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`w-12 h-12 flex items-center justify-center rounded-full transition-colors ${
+              className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${
                 isActive
                   ? 'bg-blue-600 text-white'
                   : 'text-white hover:bg-gray-800 dark:hover:bg-gray-800'
@@ -88,8 +89,47 @@ export function VerticalNav() {
             </Link>
           );
         })}
+        <CompactWalletConnect />
       </div>
     </nav>
+  );
+}
+
+export function VerticalNav() {
+  const pathname = usePathname();
+
+  const navItems = [
+    { href: '/pools', label: 'My Pools', icon: HomeIcon },
+    { href: '/', label: 'Tokenized Stocks', icon: EthIcon },
+    { href: '/solana-pools', label: 'Solana Pools', icon: SolIcon },
+  ];
+
+  return (
+    <>
+      {/* Desktop Navigation - Fixed left side */}
+      <nav className="hidden md:block fixed left-4 top-1/2 -translate-y-1/2 z-50">
+        <div className="bg-gray-900 dark:bg-gray-950 rounded-full border border-gray-700 dark:border-gray-600 p-2 flex flex-col gap-2">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
+            const IconComponent = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`w-12 h-12 flex items-center justify-center rounded-full transition-colors ${
+                  isActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-white hover:bg-gray-800 dark:hover:bg-gray-800'
+                }`}
+                title={item.label}
+              >
+                <IconComponent />
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    </>
   );
 }
 

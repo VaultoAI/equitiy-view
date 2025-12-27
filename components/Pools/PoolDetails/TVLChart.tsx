@@ -26,6 +26,7 @@ interface ChartDataPoint {
 
 export function TVLChart({ poolData, loading }: TVLChartProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     // Check if dark mode is active
@@ -37,7 +38,15 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
       }
     };
 
+    // Check if mobile
+    const checkMobile = () => {
+      if (typeof window !== 'undefined') {
+        setIsMobile(window.innerWidth < 768); // md breakpoint
+      }
+    };
+
     checkDarkMode();
+    checkMobile();
 
     // Watch for theme changes
     const observer = new MutationObserver(checkDarkMode);
@@ -52,9 +61,13 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', checkDarkMode);
 
+    // Watch for window resize
+    window.addEventListener('resize', checkMobile);
+
     return () => {
       observer.disconnect();
       mediaQuery.removeEventListener('change', checkDarkMode);
+      window.removeEventListener('resize', checkMobile);
     };
   }, []);
 
@@ -73,7 +86,9 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
     });
   }, [poolData?.tvlHistory]);
 
-  // Calculate which dates should be shown on x-axis (every 2 days)
+  // Calculate which dates should be shown on x-axis
+  // For mobile: evenly spaced ticks for consistent grid lines
+  // For desktop: ticks based on time intervals (every 2 days)
   const xAxisTicks = useMemo(() => {
     if (!chartData || chartData.length === 0) return [];
     
@@ -82,6 +97,26 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
     
     if (sortedData.length === 0) return [];
     
+    // For mobile: create evenly spaced ticks (4-5 ticks)
+    if (isMobile) {
+      const numTicks = Math.min(5, sortedData.length);
+      const ticks: string[] = [];
+      const step = Math.max(1, Math.floor((sortedData.length - 1) / (numTicks - 1)));
+      
+      for (let i = 0; i < sortedData.length; i += step) {
+        ticks.push(sortedData[i].date);
+        if (ticks.length >= numTicks) break;
+      }
+      
+      // Always include the last data point
+      if (ticks[ticks.length - 1] !== sortedData[sortedData.length - 1].date) {
+        ticks[ticks.length - 1] = sortedData[sortedData.length - 1].date;
+      }
+      
+      return ticks;
+    }
+    
+    // For desktop: show ticks based on time intervals (every 2 days)
     const ticks: string[] = [];
     let lastShownTimestamp = sortedData[0].timestamp;
     
@@ -98,11 +133,11 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
     }
     
     return ticks;
-  }, [chartData]);
+  }, [chartData, isMobile]);
 
   if (loading || !poolData) {
     return (
-      <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg mb-6">
+      <div className="bg-gray-50 dark:bg-gray-900 p-3 md:p-6 rounded-lg mb-6">
         <div className="animate-pulse">
           <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-32 mb-4"></div>
           <div className="h-64 bg-gray-300 dark:bg-gray-700 rounded"></div>
@@ -113,7 +148,7 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg mb-6">
+      <div className="bg-gray-50 dark:bg-gray-900 p-3 md:p-6 rounded-lg mb-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
           TVL Over Time
         </h3>
@@ -143,6 +178,27 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
 
   // Format Y-axis values
   const formatYAxis = (value: number) => {
+    // Hide "$0" label on mobile
+    if (isMobile && value === 0) {
+      return '';
+    }
+    
+    // For mobile: round to nearest 1000 and remove decimals
+    if (isMobile) {
+      const roundedValue = Math.round(value / 1000) * 1000;
+      if (roundedValue >= 1e9) {
+        return `$${Math.round(roundedValue / 1e9)}B`;
+      }
+      if (roundedValue >= 1e6) {
+        return `$${Math.round(roundedValue / 1e6)}M`;
+      }
+      if (roundedValue >= 1e3) {
+        return `$${Math.round(roundedValue / 1e3)}K`;
+      }
+      return `$${roundedValue}`;
+    }
+    
+    // For desktop: keep decimals
     if (value >= 1e9) {
       return `$${(value / 1e9).toFixed(1)}B`;
     }
@@ -156,7 +212,7 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
   };
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg mb-6">
+    <div className="bg-gray-50 dark:bg-gray-900 p-3 md:p-6 rounded-lg mb-6">
       <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
         TVL Over Time
       </h3>
@@ -164,7 +220,12 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={chartData}
-            margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
+            margin={{ 
+              top: 10, 
+              right: 10, 
+              left: isMobile ? 0 : -10, 
+              bottom: 10 
+            }}
           >
             <defs>
               <linearGradient id="colorTvl" x1="0" y1="0" x2="0" y2="1">
@@ -180,10 +241,12 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
                 />
               </linearGradient>
             </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke={isDarkMode ? '#374151' : '#e5e7eb'}
-            />
+            {!isMobile && (
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={isDarkMode ? '#374151' : '#e5e7eb'}
+              />
+            )}
             <XAxis
               dataKey="date"
               stroke={isDarkMode ? '#9ca3af' : '#6b7280'}
