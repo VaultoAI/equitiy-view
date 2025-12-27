@@ -7,7 +7,7 @@ import { calculateApr } from '@/lib/pools/utils';
 import { sortPools } from '@/lib/pools/utils';
 import { getSolanaTokenLogoUrl, getSolanaTokenName, getTrackedSolanaTokenMints, isTrackedSolanaToken } from '@/lib/utils/solanaTokenLogo';
 
-const METEORA_API_URL = 'https://dlmm-api.meteora.ag/pair/all';
+const METEORA_API_URL = '/api/meteora';
 
 // Common Solana token addresses
 const SOLANA_COMMON_TOKENS: Record<string, { symbol: string; name: string; decimals: number }> = {
@@ -145,9 +145,6 @@ export function useSolanaPools(sortState: PoolTableSortState = {
       try {
         const response = await fetch(METEORA_API_URL, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
         });
 
         if (!response.ok) {
