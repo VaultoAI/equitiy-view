@@ -18,6 +18,14 @@ function PoolDetailsContent() {
 
   const isSolana = chain?.toLowerCase() === 'solana';
   
+  // Call hook unconditionally (required by React Hooks rules)
+  // Pass empty string for Solana to prevent unnecessary fetching
+  const ethereumPoolQuery = usePoolData(isSolana ? '' : poolAddress);
+  
+  const poolData = ethereumPoolQuery.data;
+  const loading = ethereumPoolQuery.loading;
+  const error = ethereumPoolQuery.error;
+  
   // Disable access to Solana pool details
   if (isSolana) {
     return (
@@ -39,13 +47,6 @@ function PoolDetailsContent() {
       </div>
     );
   }
-  
-  // Use Ethereum pool data hook (Solana is blocked above)
-  const ethereumPoolQuery = usePoolData(poolAddress);
-  
-  const poolData = ethereumPoolQuery.data;
-  const loading = ethereumPoolQuery.loading;
-  const error = ethereumPoolQuery.error;
 
   return (
     <div className="min-h-screen p-8">
