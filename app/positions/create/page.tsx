@@ -66,7 +66,7 @@ function CreatePositionContent() {
         amountB: state.amountB,
         feeTier: state.feeTier,
       });
-      router.push('/pools');
+      router.push('/');
     } catch (error) {
       console.error('Transaction failed:', error);
     }

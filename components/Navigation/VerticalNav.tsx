@@ -63,9 +63,9 @@ export function MobileNavBar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/pools', label: 'My Wallet', icon: HomeIcon },
-    { href: '/', label: 'Tokenized Stocks', icon: EthIcon },
-    { href: '/solana-pools', label: 'Solana Pools', icon: SolIcon },
+    { href: '/', label: 'My Wallet', icon: HomeIcon },
+    { href: '/eth', label: 'Tokenized Stocks', icon: EthIcon },
+    { href: '/sol', label: 'Solana Pools', icon: SolIcon },
   ];
 
   return (
@@ -99,9 +99,9 @@ export function VerticalNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/pools', label: 'My Wallet', icon: HomeIcon },
-    { href: '/', label: 'Tokenized Stocks', icon: EthIcon },
-    { href: '/solana-pools', label: 'Solana Pools', icon: SolIcon },
+    { href: '/', label: 'My Wallet', icon: HomeIcon },
+    { href: '/eth', label: 'Tokenized Stocks', icon: EthIcon },
+    { href: '/sol', label: 'Solana Pools', icon: SolIcon },
   ];
 
   return (

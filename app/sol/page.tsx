@@ -8,7 +8,7 @@ import { PoolTable } from '@/components/Pools/PoolTable';
 import { useSolanaPools } from '@/hooks/useSolanaPools';
 import { PoolSortFields, PoolTableSortState } from '@/lib/pools/types';
 
-export default function SolanaPoolsPage() {
+export default function SolPage() {
   const [sortState] = useState<PoolTableSortState>({
     sortBy: PoolSortFields.TVL,
     sortDirection: 'desc',

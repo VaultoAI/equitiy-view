@@ -84,7 +84,7 @@ export function AddLiquidityForm({ token0, token1, feeTier }: AddLiquidityFormPr
         amountB: state.amountB,
         feeTier: state.feeTier,
       });
-      router.push('/pools');
+      router.push('/');
     } catch (error) {
       console.error('Transaction failed:', error);
     }
