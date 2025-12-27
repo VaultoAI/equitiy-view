@@ -61,6 +61,7 @@ export enum PoolSortFields {
   Apr = 'APR',
   FeeTier = 'Fee Tier',
   Fees24h = 'Fees 24h',
+  Fees30d = 'Fees 30d',
   Volume24h = '1 day volume',
   Volume30D = '30 day volume',
   VolOverTvl = '1 day volume/TVL',

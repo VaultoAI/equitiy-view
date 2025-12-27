@@ -11,6 +11,7 @@ import { useAccount } from 'wagmi';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { Token } from '@/lib/pools/types';
 import { useLiquidityTransaction } from '@/hooks/useLiquidityTransaction';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 function CreatePositionContent() {
   const searchParams = useSearchParams();
@@ -143,7 +144,11 @@ function CreatePositionContent() {
 export default function CreatePositionPage() {
   return (
     <CreateLiquidityProvider>
-      <Suspense fallback={<div className="min-h-screen p-8 flex items-center justify-center">Loading...</div>}>
+      <Suspense fallback={
+        <div className="min-h-screen p-8 flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Loading..." />
+        </div>
+      }>
         <CreatePositionContent />
       </Suspense>
     </CreateLiquidityProvider>

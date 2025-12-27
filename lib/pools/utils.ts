@@ -56,6 +56,12 @@ export function sortPools(
         return sortState.sortDirection === 'desc'
           ? fees24hB - fees24hA
           : fees24hA - fees24hB;
+      case PoolSortFields.Fees30d:
+        const fees30dA = a.fees30d ?? 0;
+        const fees30dB = b.fees30d ?? 0;
+        return sortState.sortDirection === 'desc'
+          ? fees30dB - fees30dA
+          : fees30dA - fees30dB;
       case PoolSortFields.Volume24h:
         return sortState.sortDirection === 'desc'
           ? b.volume24h - a.volume24h

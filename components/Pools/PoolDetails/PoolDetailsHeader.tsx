@@ -2,6 +2,7 @@
 
 import { PoolData } from '@/lib/pools/types';
 import { PoolDescription } from '../PoolDescription';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface PoolDetailsHeaderProps {
   poolData: PoolData;
@@ -10,7 +11,11 @@ interface PoolDetailsHeaderProps {
 
 export function PoolDetailsHeader({ poolData, loading }: PoolDetailsHeaderProps) {
   if (loading || !poolData) {
-    return <div className="animate-pulse">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center py-8">
+        <LoadingSpinner size="md" text="Loading pool details..." />
+      </div>
+    );
   }
 
   return (

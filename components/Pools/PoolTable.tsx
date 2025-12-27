@@ -5,6 +5,7 @@ import { TablePool, PoolSortFields, PoolTableSortState } from '@/lib/pools/types
 import { PoolTableRow } from './PoolTableRow';
 import { formatCurrency, formatPercent } from '@/lib/utils/formatting';
 import { sortPools } from '@/lib/pools/utils';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface PoolTableProps {
   pools: TablePool[];
@@ -46,7 +47,7 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="text-gray-500">Loading pools...</div>
+        <LoadingSpinner size="lg" text="Loading pools..." />
       </div>
     );
   }
@@ -77,10 +78,10 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
               <SortButton field={PoolSortFields.TVL}>TVL</SortButton>
             </th>
             <th className="px-4 py-3 text-left text-sm font-semibold">
-              <SortButton field={PoolSortFields.FeeTier}>Fee Tier</SortButton>
+              <SortButton field={PoolSortFields.Fees24h}>Fees 24h</SortButton>
             </th>
             <th className="px-4 py-3 text-left text-sm font-semibold">
-              <SortButton field={PoolSortFields.Fees24h}>Fees 24h</SortButton>
+              <SortButton field={PoolSortFields.Fees30d}>Fees 30d</SortButton>
             </th>
             <th className="px-4 py-3 text-left text-sm font-semibold">
               <SortButton field={PoolSortFields.Volume24h}>Volume 24h</SortButton>

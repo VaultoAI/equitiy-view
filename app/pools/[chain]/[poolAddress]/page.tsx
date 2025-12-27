@@ -9,12 +9,43 @@ import { TVLChart } from '@/components/Pools/PoolDetails/TVLChart';
 import { WalletConnect } from '@/components/WalletConnect';
 import { CreateLiquidityProvider } from '@/contexts/CreateLiquidityContext';
 import { AddLiquidityForm } from '@/components/Liquidity/CreatePosition/AddLiquidityForm';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 function PoolDetailsContent() {
   const params = useParams();
+  const chain = params.chain as string;
   const poolAddress = params.poolAddress as string;
 
-  const { data: poolData, loading, error } = usePoolData(poolAddress);
+  const isSolana = chain?.toLowerCase() === 'solana';
+  
+  // Disable access to Solana pool details
+  if (isSolana) {
+    return (
+      <div className="min-h-screen p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold">Pool Details</h1>
+            <WalletConnect />
+          </div>
+          <div className="text-center py-12">
+            <div className="text-red-500 text-lg font-semibold mb-2">
+              Pool details are not available for Solana pools
+            </div>
+            <div className="text-gray-500">
+              Please use the Solana pools list page to view pool information.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Use Ethereum pool data hook (Solana is blocked above)
+  const ethereumPoolQuery = usePoolData(poolAddress);
+  
+  const poolData = ethereumPoolQuery.data;
+  const loading = ethereumPoolQuery.loading;
+  const error = ethereumPoolQuery.error;
 
   return (
     <div className="min-h-screen p-8">
@@ -26,7 +57,7 @@ function PoolDetailsContent() {
 
         {loading ? (
           <div className="text-center py-12">
-            <div className="text-gray-500">Loading pool data...</div>
+            <LoadingSpinner size="lg" text="Loading pool data..." />
           </div>
         ) : error ? (
           <div className="text-center py-12">

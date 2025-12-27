@@ -3,6 +3,7 @@
 import { PoolData } from '@/lib/pools/types';
 import { formatCurrency, formatPercent } from '@/lib/utils/formatting';
 import { calculateApr } from '@/lib/pools/utils';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface PoolDetailsStatsProps {
   poolData: PoolData;
@@ -11,7 +12,11 @@ interface PoolDetailsStatsProps {
 
 export function PoolDetailsStats({ poolData, loading }: PoolDetailsStatsProps) {
   if (loading || !poolData) {
-    return <div className="animate-pulse">Loading stats...</div>;
+    return (
+      <div className="flex justify-center items-center py-8">
+        <LoadingSpinner size="md" text="Loading stats..." />
+      </div>
+    );
   }
 
   const apr = calculateApr({

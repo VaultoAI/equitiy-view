@@ -1,17 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 
 const HomeIcon = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
       d="M10 2L3 7V18H7V12H13V18H17V7L10 2Z"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill="none"
+      fill="currentColor"
     />
   </svg>
 );
@@ -41,12 +38,33 @@ const PoolsIcon = () => (
   </svg>
 );
 
+const EthIcon = () => (
+  <Image
+    src="/nav-icons/ethicon.png"
+    alt="Ethereum"
+    width={15}
+    height={15}
+    className="rounded-full"
+  />
+);
+
+const SolIcon = () => (
+  <Image
+    src="/nav-icons/solicon.png"
+    alt="Solana"
+    width={20}
+    height={20}
+    className="rounded-full"
+  />
+);
+
 export function VerticalNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'Home', icon: HomeIcon },
-    { href: '/pools', label: 'Pools', icon: PoolsIcon },
+    { href: '/pools', label: 'My Pools', icon: HomeIcon },
+    { href: '/', label: 'Tokenized Stocks', icon: EthIcon },
+    { href: '/solana-pools', label: 'Solana Pools', icon: SolIcon },
   ];
 
   return (

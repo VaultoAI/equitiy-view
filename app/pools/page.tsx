@@ -34,10 +34,17 @@ export default function PoolsPage() {
         </div>
 
         {!isConnected ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Connect your wallet to see pools for your tokens
-            </p>
+          <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+            <div className="max-w-md w-full text-center space-y-4">
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Connect Your Wallet
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 text-lg">
+                  Connect your wallet to view and manage your liquidity pools
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
           <PoolTable pools={pools} loading={loading} error={error} />

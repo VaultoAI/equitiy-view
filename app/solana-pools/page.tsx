@@ -4,16 +4,16 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { WalletConnect } from '@/components/WalletConnect';
 import { PoolTable } from '@/components/Pools/PoolTable';
-import { useTokenizedStockPools } from '@/hooks/useTokenizedStockPools';
+import { useSolanaPools } from '@/hooks/useSolanaPools';
 import { PoolSortFields, PoolTableSortState } from '@/lib/pools/types';
 
-export default function Home() {
+export default function SolanaPoolsPage() {
   const [sortState] = useState<PoolTableSortState>({
     sortBy: PoolSortFields.TVL,
     sortDirection: 'desc',
   });
 
-  const { pools, loading, error } = useTokenizedStockPools(sortState);
+  const { pools, loading, error } = useSolanaPools(sortState);
 
   return (
     <div className="min-h-screen p-8">
@@ -27,7 +27,7 @@ export default function Home() {
               height={50}
               className="h-12 w-auto"
             />
-            <span className="text-lg font-medium">Public</span>
+            <span className="text-lg font-medium">Private</span>
           </div>
           <WalletConnect />
         </div>
@@ -37,5 +37,4 @@ export default function Home() {
     </div>
   );
 }
-
 

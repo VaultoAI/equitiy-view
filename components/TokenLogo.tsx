@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Token } from '@/lib/pools/types';
 import { useTokenLogo } from '@/hooks/useTokenLogo';
+import { getSolanaTokenLogoUrl } from '@/lib/utils/solanaTokenLogo';
 
 interface TokenLogoProps {
   token: Token;
@@ -15,17 +16,23 @@ interface TokenLogoProps {
  * Reusable component for displaying token logos with fallback handling
  */
 export function TokenLogo({ token, size = 24, className = '' }: TokenLogoProps) {
-  const { logoUrl, isLoading } = useTokenLogo({
+  const isSolana = token.chain === 'SOLANA';
+  const solanaLogoUrl = isSolana ? getSolanaTokenLogoUrl(token.address) : null;
+  
+  const { logoUrl: ethereumLogoUrl, isLoading } = useTokenLogo({
     tokenAddress: token.address,
     chainId: token.chain === 'ETHEREUM' ? 1 : undefined,
-    enabled: !!token.address,
+    enabled: !!token.address && !isSolana,
   });
 
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
+  // Use Solana logo URL if available, otherwise use Ethereum logo URL
+  const logoUrl = isSolana ? solanaLogoUrl : ethereumLogoUrl;
+
   // Fallback to showing first letter of symbol if no logo or error
-  const showFallback = !logoUrl || imageError || isLoading;
+  const showFallback = !logoUrl || imageError || (isLoading && !isSolana);
 
   const handleImageError = () => {
     setImageError(true);
