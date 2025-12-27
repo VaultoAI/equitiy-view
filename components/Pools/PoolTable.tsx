@@ -25,6 +25,52 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
     }));
   };
 
+  // Calculate sorted pools and totals - must be before conditional returns
+  const sortedPools = useMemo(() => {
+    if (pools.length === 0) return [];
+    return sortPools(pools, sortState);
+  }, [pools, sortState]);
+
+  const totals = useMemo(() => {
+    if (sortedPools.length === 0) {
+      return {
+        tvl: 0,
+        fees24h: 0,
+        fees30d: 0,
+        volume24h: 0,
+        volume30d: 0,
+        apr: 0
+      };
+    }
+
+    let totalTvl = 0;
+    let totalFees24h = 0;
+    let totalFees30d = 0;
+    let totalVolume24h = 0;
+    let totalVolume30d = 0;
+    let weightedAprSum = 0;
+    
+    sortedPools.forEach(pool => {
+      totalTvl += pool.tvl || 0;
+      totalFees24h += pool.fees24h || 0;
+      totalFees30d += pool.fees30d || 0;
+      totalVolume24h += pool.volume24h || 0;
+      totalVolume30d += pool.volume30d || 0;
+      weightedAprSum += (pool.apr || 0) * (pool.tvl || 0);
+    });
+    
+    const avgApr = totalTvl > 0 ? weightedAprSum / totalTvl : 0;
+    
+    return {
+      tvl: totalTvl,
+      fees24h: totalFees24h,
+      fees30d: totalFees30d,
+      volume24h: totalVolume24h,
+      volume30d: totalVolume30d,
+      apr: avgApr
+    };
+  }, [sortedPools]);
+
   const SortButton = ({ field, children }: { field: PoolSortFields; children: React.ReactNode }) => {
     const isActive = sortState.sortBy === field;
     const direction = isActive ? sortState.sortDirection : undefined;
@@ -158,9 +204,22 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
           </tr>
         </thead>
         <tbody>
-          {sortPools(pools, sortState).map((pool) => (
+          {sortedPools.map((pool) => (
             <PoolTableRow key={pool.hash} pool={pool} />
           ))}
+          {sortedPools.length > 0 && (
+            <tr className="bg-gray-100 dark:bg-gray-800 font-semibold border-t-2 border-gray-300 dark:border-gray-600">
+              <td className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-800 px-4 py-3 text-sm">
+                Total
+              </td>
+              <td className="px-4 py-3 text-sm">{formatCurrency(totals.tvl)}</td>
+              <td className="px-4 py-3 text-sm">{formatCurrency(totals.fees24h)}</td>
+              <td className="px-4 py-3 text-sm">{formatCurrency(totals.fees30d)}</td>
+              <td className="px-4 py-3 text-sm">{formatCurrency(totals.volume24h)}</td>
+              <td className="px-4 py-3 text-sm">{formatCurrency(totals.volume30d)}</td>
+              <td className="px-4 py-3 text-sm">{formatPercent(totals.apr)}</td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
