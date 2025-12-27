@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useQuery } from '@tanstack/react-query';
 import { TokenBalance } from '@/lib/pools/types';
-import { getTokenTransfers, getUniqueTokensFromTransfers, TokenInfo } from '@/lib/etherscan/client';
+import { getTokensFromAllChains, TokenInfo } from '@/lib/etherscan/client';
 import { getWalletTokensCache, setWalletTokensCache } from '@/lib/cache/walletCache';
 import { getTokenLogoUrl } from '@/lib/utils/tokenLogo';
 
@@ -33,32 +33,23 @@ export function useTokenBalances() {
       console.log('🔍 [Token Balances] Cache miss or expired, fetching tokens for address:', address);
       
       try {
-        // Step 1: Get all token transfers
-        const transfers = await getTokenTransfers(address);
-        
-        if (transfers.length === 0) {
-          console.log('⚠️ [Token Balances] No token transfers found');
-          // Cache empty result to avoid repeated API calls
-          setWalletTokensCache(address, []);
-          return { tokens: [] };
-        }
-
-        // Step 2: Extract unique tokens and get current balances
-        const tokens = await getUniqueTokensFromTransfers(transfers, address);
+        // Step 1: Get tokens from all supported chains
+        const tokens = await getTokensFromAllChains(address);
         
         // Update cache with fetched tokens
         setWalletTokensCache(address, tokens);
         
         const tokenCount = tokens.length;
-        console.log(`✅ [Token Balances] Found ${tokenCount} tokens with non-zero balance for address ${address}`);
+        console.log(`✅ [Token Balances] Found ${tokenCount} tokens with non-zero balance across all chains for address ${address}`);
         console.log(`💾 [Token Balances] Cached ${tokenCount} tokens for 24 hours`);
         
         if (tokenCount > 0) {
           console.log('📋 [Token Balances] Token list:');
           tokens.forEach((token, index) => {
             const balance = parseFloat(token.balance) / Math.pow(10, token.decimals);
-            console.log(`  ${index + 1}. ${token.symbol} (${token.name})`);
+            console.log(`  ${index + 1}. ${token.symbol} (${token.name}) on ${token.chain}`);
             console.log(`     Address: ${token.address}`);
+            console.log(`     Chain ID: ${token.chainId}`);
             console.log(`     Balance: ${balance.toFixed(4)}`);
             console.log(`     Decimals: ${token.decimals}`);
           });
@@ -78,12 +69,30 @@ export function useTokenBalances() {
   const balanceList: TokenBalance[] = [];
 
   if (data?.tokens) {
-    data.tokens.forEach((token: TokenInfo) => {
-      const balance = parseFloat(token.balance) / Math.pow(10, token.decimals);
-      // Note: USD value would require price API - setting to 0 for now
-      const usdValue = 0;
+    console.log(`📊 [Token Balances] Processing ${data.tokens.length} tokens...`);
+    
+    data.tokens.forEach((token: TokenInfo, index: number) => {
+      // Parse raw balance string to number using BigInt for precision
+      const rawBalance = token.balance;
+      const decimals = token.decimals;
+      
+      // Use BigInt for precise calculation to avoid floating point errors
+      const balanceBigInt = BigInt(rawBalance || '0');
+      const divisor = BigInt(10 ** decimals);
+      const wholePart = balanceBigInt / divisor;
+      const fractionalPart = balanceBigInt % divisor;
+      const balance = Number(wholePart) + Number(fractionalPart) / Number(divisor);
+      
+      const chainId = token.chainId || 1;
+      const normalizedAddress = token.address.toLowerCase();
+      
+      // Log token details
+      console.log(`  ${index + 1}. ${token.symbol} (${token.name})`);
+      console.log(`     Chain: ${token.chain} (${chainId})`);
+      console.log(`     Address: ${token.address}`);
+      console.log(`     Balance: ${balance.toFixed(6)}`);
 
-      balanceMap[token.address.toLowerCase()] = { usdValue, balance };
+      balanceMap[normalizedAddress] = { usdValue: 0, balance };
 
       balanceList.push({
         currencyInfo: {
@@ -93,14 +102,16 @@ export function useTokenBalances() {
             symbol: token.symbol,
             decimals: token.decimals,
             address: token.address,
-            chain: 'ETHEREUM',
-            logoURI: getTokenLogoUrl(token.address, 1),
+            chain: token.chain || 'ETHEREUM',
+            logoURI: getTokenLogoUrl(token.address, token.chainId || 1),
           },
         },
         quantity: balance,
-        balanceUSD: usdValue,
+        balanceUSD: 0,
       });
     });
+    
+    console.log(`✅ [Token Balances] Processed ${balanceList.length} tokens into balance list`);
   }
 
   // Only log when balanceList length changes, not on every render

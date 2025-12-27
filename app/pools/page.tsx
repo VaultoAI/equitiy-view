@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { WalletConnect } from '@/components/WalletConnect';
 import { MobileNavBar } from '@/components/Navigation/VerticalNav';
 import { PoolTable } from '@/components/Pools/PoolTable';
+import { WalletBalance } from '@/components/WalletDashboard/WalletBalance';
 import { useWalletPools } from '@/hooks/useWalletPools';
 import { PoolSortFields, PoolTableSortState } from '@/lib/pools/types';
 import { useAccount } from 'wagmi';
@@ -30,7 +31,7 @@ export default function PoolsPage() {
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6 md:mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold">My Pools</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">My Wallet</h1>
           {/* Mobile nav bar (includes wallet connect) */}
           <MobileNavBar />
           {/* Desktop wallet connect - hidden on mobile (shown in nav) */}
@@ -58,7 +59,15 @@ export default function PoolsPage() {
             </div>
           </div>
         ) : (
-          <PoolTable pools={pools} loading={loading} error={error} />
+          <>
+            {/* Wallet Dashboard */}
+            <div className="mb-8 md:mb-12">
+              <WalletBalance />
+            </div>
+            
+            {/* Pool Table */}
+            <PoolTable pools={pools} loading={loading} error={error} />
+          </>
         )}
       </div>
     </div>

@@ -11,7 +11,6 @@ import { useAccount } from 'wagmi';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { Token } from '@/lib/pools/types';
 import { useLiquidityTransaction } from '@/hooks/useLiquidityTransaction';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 function CreatePositionContent() {
   const searchParams = useSearchParams();
@@ -145,8 +144,27 @@ export default function CreatePositionPage() {
   return (
     <CreateLiquidityProvider>
       <Suspense fallback={
-        <div className="min-h-screen p-8 flex items-center justify-center">
-          <LoadingSpinner size="lg" text="Loading..." />
+        <div className="min-h-screen p-8">
+          <div className="max-w-2xl mx-auto">
+            <div className="flex justify-between items-center mb-8">
+              <div className="animate-pulse">
+                <div className="h-9 bg-gray-300 dark:bg-gray-700 rounded w-48"></div>
+              </div>
+              <div className="animate-pulse">
+                <div className="h-10 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg space-y-6">
+              <div className="animate-pulse">
+                <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-20 mb-4"></div>
+                <div className="h-12 bg-gray-300 dark:bg-gray-700 rounded"></div>
+              </div>
+              <div className="animate-pulse">
+                <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-20 mb-4"></div>
+                <div className="h-12 bg-gray-300 dark:bg-gray-700 rounded"></div>
+              </div>
+            </div>
+          </div>
         </div>
       }>
         <CreatePositionContent />

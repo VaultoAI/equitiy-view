@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useAccount } from 'wagmi';
 import { WalletConnect } from '@/components/WalletConnect';
 import { MobileNavBar } from '@/components/Navigation/VerticalNav';
 import { PoolTable } from '@/components/Pools/PoolTable';
@@ -9,6 +10,7 @@ import { useTokenizedStockPools } from '@/hooks/useTokenizedStockPools';
 import { PoolSortFields, PoolTableSortState } from '@/lib/pools/types';
 
 export default function Home() {
+  const { isConnected } = useAccount();
   const [sortState] = useState<PoolTableSortState>({
     sortBy: PoolSortFields.TVL,
     sortDirection: 'desc',
@@ -39,6 +41,7 @@ export default function Home() {
           </div>
         </div>
         
+        {/* Pool Table - Always shown */}
         <PoolTable pools={pools} loading={loading} error={error} />
       </div>
     </div>

@@ -5,7 +5,6 @@ import { Token } from '@/lib/pools/types';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { useTokenPrices } from '@/hooks/useTokenPrices';
 import { TokenLogo } from '@/components/TokenLogo';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface DepositAmountsProps {
   tokenA: Token | null;
@@ -241,7 +240,9 @@ export function DepositAmounts({
       </div>
       {pricesLoading && (
         <div className="flex justify-center mt-2">
-          <LoadingSpinner size="sm" text="Loading prices..." />
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
+          </div>
         </div>
       )}
       {(!priceA || !priceB) && !pricesLoading && tokenA && tokenB && (

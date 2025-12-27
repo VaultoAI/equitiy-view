@@ -55,7 +55,20 @@ export function getWalletTokensCache(walletAddress: string): TokenInfo[] | null 
       return null;
     }
 
-    return parsed.tokens;
+    // Migrate old cache entries: add default chainId and chain if missing
+    const migratedTokens = parsed.tokens.map(token => {
+      if (!('chainId' in token) || !('chain' in token)) {
+        // Old cache entry - default to Ethereum
+        return {
+          ...token,
+          chainId: 1,
+          chain: 'ETHEREUM',
+        };
+      }
+      return token;
+    });
+
+    return migratedTokens;
   } catch (error) {
     console.error('Error reading wallet tokens cache:', error);
     // If cache is corrupted, remove it

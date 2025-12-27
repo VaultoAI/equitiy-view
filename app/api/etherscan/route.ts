@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 const ETHERSCAN_API_KEY = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY || 'YourApiKeyToken';
 // V2 API base URL
 const ETHERSCAN_BASE_URL = 'https://api.etherscan.io/v2/api';
-const CHAIN_ID = 1; // Ethereum mainnet
+const CHAIN_ID = 1; // Default to Ethereum mainnet
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
     const address = searchParams.get('address');
     const contractAddress = searchParams.get('contractAddress') || searchParams.get('contractaddress');
+    const chainId = searchParams.get('chainid') || searchParams.get('chainId') || String(CHAIN_ID);
+    const page = searchParams.get('page');
+    const offset = searchParams.get('offset');
 
     if (!action || !address) {
       return NextResponse.json(
@@ -22,11 +25,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // V2 API format: chainid=1&module=account&action=...
-    // According to docs: https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokenbalance&contractaddress={token}&address={wallet}&tag=latest&apikey={key}
-    let url = `${ETHERSCAN_BASE_URL}?chainid=${CHAIN_ID}&module=account&action=${action}&apikey=${ETHERSCAN_API_KEY}`;
+    // V2 API format: chainid={chainId}&module=account&action=...
+    // According to docs: https://api.etherscan.io/v2/api?chainid={chainId}&module=account&action=tokenbalance&contractaddress={token}&address={wallet}&tag=latest&apikey={key}
+    let url = `${ETHERSCAN_BASE_URL}?chainid=${chainId}&module=account&action=${action}&apikey=${ETHERSCAN_API_KEY}`;
 
-    // Add address parameter
+    // Add address parameter and action-specific parameters
     if (action === 'tokentx') {
       url += `&address=${address}&startblock=0&endblock=99999999&sort=asc`;
     } else if (action === 'tokenbalance') {
@@ -38,6 +41,15 @@ export async function GET(request: NextRequest) {
         );
       }
       url += `&contractaddress=${contractAddress}&address=${address}&tag=latest`;
+    } else if (action === 'addresstokenbalance') {
+      // For addresstokenbalance, address, page, and offset are required
+      url += `&address=${address}`;
+      if (page) {
+        url += `&page=${page}`;
+      }
+      if (offset) {
+        url += `&offset=${offset}`;
+      }
     } else {
       url += `&address=${address}`;
       if (action === 'balance') {
@@ -45,7 +57,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`🔍 [Etherscan V2 Proxy] ${action} for ${address}${contractAddress ? ` (token: ${contractAddress})` : ''}`);
+    console.log(`🔍 [Etherscan V2 Proxy] ${action} for ${address} on chain ${chainId}${contractAddress ? ` (token: ${contractAddress})` : ''}`);
     console.log(`🔍 [Etherscan V2 Proxy] Full URL: ${url.replace(ETHERSCAN_API_KEY, '***')}`);
     
     const response = await fetch(url);
@@ -57,6 +69,9 @@ export async function GET(request: NextRequest) {
       } else if (action === 'tokentx') {
         const count = Array.isArray(data.result) ? data.result.length : 0;
         console.log(`✅ [Etherscan V2 Proxy] Found ${count} token transfers`);
+      } else if (action === 'addresstokenbalance') {
+        const count = Array.isArray(data.result) ? data.result.length : 0;
+        console.log(`✅ [Etherscan V2 Proxy] Found ${count} token balances${page ? ` (page ${page})` : ''}`);
       } else {
         console.log(`✅ [Etherscan V2 Proxy] Success for ${action}`);
       }

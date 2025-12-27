@@ -11,7 +11,6 @@ import { WalletConnect } from '@/components/WalletConnect';
 import { MobileNavBar } from '@/components/Navigation/VerticalNav';
 import { CreateLiquidityProvider } from '@/contexts/CreateLiquidityContext';
 import { AddLiquidityForm } from '@/components/Liquidity/CreatePosition/AddLiquidityForm';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 function PoolDetailsContent() {
   const params = useParams();
@@ -91,8 +90,23 @@ function PoolDetailsContent() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12">
-            <LoadingSpinner size="lg" text="Loading pool data..." />
+          <div className="space-y-6">
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-48 mb-2"></div>
+              <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {[...Array(5)].map((_, index) => (
+                <div key={index} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+                  <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-16 mb-2"></div>
+                  <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
+                </div>
+              ))}
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-900 p-3 md:p-6 rounded-lg">
+              <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-32 mb-4"></div>
+              <div className="h-64 bg-gray-300 dark:bg-gray-700 rounded"></div>
+            </div>
           </div>
         ) : error ? (
           <div className="text-center py-12">
