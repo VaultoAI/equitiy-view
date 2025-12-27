@@ -183,7 +183,7 @@ export async function getAddressTokenBalances(
     
     console.log(`🔍 [Etherscan V2] Fetching token balances for ${walletAddress} on chain ${chainId} (${CHAIN_NAMES[chainId] || 'UNKNOWN'}), page ${page}`);
     const response = await fetch(url);
-    const data: EtherscanResponse<AddressTokenBalanceResponse[]> = await response.json();
+    const data: EtherscanResponse<AddressTokenBalanceResponse[] | string> = await response.json();
     
     // Check if this is an API Pro requirement error
     if (data.status === '0' && typeof data.result === 'string' && data.result.includes('API Pro')) {
