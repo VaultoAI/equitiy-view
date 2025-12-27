@@ -24,15 +24,10 @@ interface MeteoraPoolResponse {
   name: string;
   mint_x: string;
   mint_y: string;
-  reserve_x_amount: number;
-  reserve_y_amount: number;
   liquidity: string;
   trade_volume_24h: number;
   fees_24h: number;
-  apr: number;
   base_fee_percentage: string;
-  bin_step: number;
-  current_price: number;
 }
 
 /**
@@ -153,28 +148,17 @@ export function useSolanaPools(sortState: PoolTableSortState = {
 
         const pools: MeteoraPoolResponse[] = await response.json();
 
-        console.log(`📊 [Solana Pools] Fetched ${pools.length} total pools from Meteora API`);
-
-        // Filter pools where mint_x or mint_y matches one of our tracked tokens
-        const filteredPools = pools.filter((pool) => {
-          const mintXLower = pool.mint_x?.toLowerCase();
-          const mintYLower = pool.mint_y?.toLowerCase();
-          return TRACKED_SOLANA_TOKEN_MINTS.some((trackedMint) => {
-            const trackedLower = trackedMint.toLowerCase();
-            return mintXLower === trackedLower || mintYLower === trackedLower;
-          });
-        });
-
-        console.log(`✅ [Solana Pools] Found ${filteredPools.length} pools matching tracked tokens`);
+        // Note: Server-side filtering already done - pools are pre-filtered for tracked tokens
+        console.log(`📊 [Solana Pools] Received ${pools.length} pre-filtered pools from API`);
 
         // Convert to TablePool format and group by tracked token
         const poolsByToken = new Map<string, TablePool>();
 
-        filteredPools.forEach((pool) => {
+        pools.forEach((pool) => {
           try {
             const tvl = parseFloat(pool.liquidity || '0');
             
-            // Skip pools with zero TVL
+            // TVL filtering already done server-side, but double-check for safety
             if (tvl <= 0) {
               return;
             }
@@ -189,23 +173,6 @@ export function useSolanaPools(sortState: PoolTableSortState = {
             }
 
             const { token0: token0Info, token1: token1Info } = determineTokens(pool);
-
-            // Filter out pools with unknown tokens - only keep pools with tracked prestocks
-            // Both tokens must be either: tracked prestock token, or common token (SOL, USDC, USDT)
-            const isToken0Tracked = isTrackedSolanaToken(pool.mint_x) || pool.mint_x in SOLANA_COMMON_TOKENS;
-            const isToken1Tracked = isTrackedSolanaToken(pool.mint_y) || pool.mint_y in SOLANA_COMMON_TOKENS;
-            
-            if (!isToken0Tracked || !isToken1Tracked) {
-              return; // Skip pools with unknown tokens
-            }
-
-            // Ensure at least one token is a tracked prestock (not just common tokens)
-            const hasTrackedPrestock = 
-              isTrackedSolanaToken(pool.mint_x) || isTrackedSolanaToken(pool.mint_y);
-            
-            if (!hasTrackedPrestock) {
-              return; // Skip pools that don't contain a tracked prestock token
-            }
 
             // Get logo URLs
             const token0LogoUrl = getSolanaTokenLogoUrl(pool.mint_x) || '';
