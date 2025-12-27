@@ -9,6 +9,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Vaulto Liquidity Provider',
   description: 'Provide liquidity to Uniswap pools and earn fees',
+  icons: {
+    icon: '/favicon.png',
+  },
 };
 
 export default function RootLayout({
