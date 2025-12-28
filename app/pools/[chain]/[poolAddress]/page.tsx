@@ -1,7 +1,6 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import Image from 'next/image';
 import { usePoolData } from '@/hooks/usePoolData';
 import { PoolDetailsHeader } from '@/components/Pools/PoolDetails/PoolDetailsHeader';
 import { PoolDetailsStats } from '@/components/Pools/PoolDetails/PoolDetailsStats';
@@ -11,6 +10,7 @@ import { WalletConnect } from '@/components/WalletConnect';
 import { MobileNavBar } from '@/components/Navigation/VerticalNav';
 import { CreateLiquidityProvider } from '@/contexts/CreateLiquidityContext';
 import { AddLiquidityForm } from '@/components/Liquidity/CreatePosition/AddLiquidityForm';
+import { VaultoLogo } from '@/components/VaultoLogo';
 
 function PoolDetailsContent() {
   const params = useParams();
@@ -35,9 +35,7 @@ function PoolDetailsContent() {
           {/* Header with logo and nav */}
           <div className="flex justify-between items-center mb-6 md:mb-8">
             <div className="flex items-center gap-3">
-              <Image 
-                src="/vaulto.png" 
-                alt="Vaulto" 
+              <VaultoLogo 
                 width={150} 
                 height={50}
                 className="h-8 md:h-12 w-auto"
@@ -71,9 +69,7 @@ function PoolDetailsContent() {
         {/* Header with logo and nav */}
         <div className="flex justify-between items-center mb-6 md:mb-8">
           <div className="flex items-center gap-3">
-            <Image 
-              src="/vaulto.png" 
-              alt="Vaulto" 
+            <VaultoLogo 
               width={150} 
               height={50}
               className="h-8 md:h-12 w-auto"

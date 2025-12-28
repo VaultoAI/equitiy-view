@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { useAccount } from 'wagmi';
 import { WalletConnect } from '@/components/WalletConnect';
 import { MobileNavBar } from '@/components/Navigation/VerticalNav';
 import { PoolTable } from '@/components/Pools/PoolTable';
 import { useTokenizedStockPools } from '@/hooks/useTokenizedStockPools';
 import { PoolSortFields, PoolTableSortState } from '@/lib/pools/types';
+import { VaultoLogo } from '@/components/VaultoLogo';
 
 export default function EthPage() {
   const { isConnected } = useAccount();
@@ -24,9 +24,7 @@ export default function EthPage() {
         {/* Header with logo and nav */}
         <div className="flex justify-between items-center mb-6 md:mb-8">
           <div className="flex items-center gap-3">
-            <Image 
-              src="/vaulto.png" 
-              alt="Vaulto" 
+            <VaultoLogo 
               width={150} 
               height={50}
               className="h-8 md:h-12 w-auto"
@@ -47,4 +45,5 @@ export default function EthPage() {
     </div>
   );
 }
+
 
