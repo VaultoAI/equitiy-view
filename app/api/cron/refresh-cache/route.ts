@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refreshAllCaches } from '@/lib/cache/refreshCache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,33 +66,21 @@ async function handleRequest(request: NextRequest) {
 
     console.log('🔄 [Cron Refresh] Starting cache refresh...');
 
-    // Get the base URL for internal API calls
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    
-    // Call the refresh endpoint
-    const response = await fetch(`${baseUrl}/api/cache/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(`Refresh failed: ${response.status} ${JSON.stringify(errorData)}`);
-    }
-
-    const result = await response.json();
+    // Call the refresh function directly (no HTTP overhead)
+    const result = await refreshAllCaches();
     
     console.log(`✅ [Cron Refresh] Cache refresh completed at ${result.timestamp}`);
     console.log(`   - Tokenized Stock Pools: ${result.tokenizedStockPools.success ? 'Success' : 'Failed'} (${result.tokenizedStockPools.count || 0} pools)`);
     console.log(`   - Solana Pools: ${result.solanaPools.success ? 'Success' : 'Failed'} (${result.solanaPools.count || 0} pools)`);
 
+    const allSuccess = result.tokenizedStockPools.success && result.solanaPools.success;
+
     return NextResponse.json({
-      success: true,
-      message: 'Cache refreshed successfully',
+      success: allSuccess,
+      message: allSuccess ? 'Cache refreshed successfully' : 'Cache refresh completed with some errors',
       ...result,
+    }, {
+      status: allSuccess ? 200 : 207 // 207 Multi-Status for partial success
     });
   } catch (error) {
     console.error('❌ [Cron Refresh] Error:', error);
@@ -105,4 +94,5 @@ async function handleRequest(request: NextRequest) {
     );
   }
 }
+
 
