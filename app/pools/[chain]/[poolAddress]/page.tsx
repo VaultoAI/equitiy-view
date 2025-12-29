@@ -44,9 +44,8 @@ function PoolDetailsContent() {
             </div>
             {/* Mobile nav bar (includes wallet connect) */}
             <MobileNavBar />
-            {/* Desktop: show "Pool Details" heading and wallet connect */}
+            {/* Desktop: show wallet connect */}
             <div className="hidden md:flex md:items-center md:gap-4">
-              <h1 className="text-3xl font-bold">Pool Details</h1>
               <WalletConnect />
             </div>
           </div>
@@ -78,9 +77,8 @@ function PoolDetailsContent() {
           </div>
           {/* Mobile nav bar (includes wallet connect) */}
           <MobileNavBar />
-          {/* Desktop: show "Pool Details" heading and wallet connect */}
+          {/* Desktop: show wallet connect */}
           <div className="hidden md:flex md:items-center md:gap-4">
-            <h1 className="text-3xl font-bold">Pool Details</h1>
             <WalletConnect />
           </div>
         </div>

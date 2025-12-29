@@ -31,7 +31,7 @@ interface ChartDataPoint {
   rawVolatility: number; // Raw volatility value for tooltip display
 }
 
-type VolatilityPeriod = '1d' | '7d' | '14d' | '30d';
+type VolatilityPeriod = '1d' | '3d' | '7d';
 
 export function TVLChart({ poolData, loading }: TVLChartProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -150,8 +150,8 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
         }
       }
     } else {
-      // For 7d, 14d, 30d: use rolling standard deviation
-      const windowSize = volatilityPeriod === '7d' ? 7 : volatilityPeriod === '14d' ? 14 : 30;
+      // For 3d, 7d: use rolling standard deviation
+      const windowSize = volatilityPeriod === '3d' ? 3 : 7;
 
       for (let i = 0; i < sortedData.length; i++) {
         if (i === 0) {
@@ -544,9 +544,8 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
             className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 cursor-pointer"
           >
             <option value="1d">1d</option>
+            <option value="3d">3d</option>
             <option value="7d">7d</option>
-            <option value="14d">14d</option>
-            <option value="30d">30d</option>
           </select>
         </div>
       </div>
