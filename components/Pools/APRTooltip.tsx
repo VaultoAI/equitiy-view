@@ -16,7 +16,7 @@ export function APRTooltip({ apr, className = '', showLowTvlWarning = false }: A
   const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLSpanElement>(null);
 
-  const formula = '\\text{APR} = \\frac{\\text{Fees}_{30d} \\times 365}{\\text{TVL} \\times 30} \\times 100\\%';
+  const formula = '\\text{APR} = \\frac{\\text{Fees}_{30d} \\times 12}{\\text{TVL}} \\times 100\\%';
 
   const updatePosition = () => {
     if (triggerRef.current) {
@@ -69,9 +69,9 @@ export function APRTooltip({ apr, className = '', showLowTvlWarning = false }: A
       onMouseLeave={() => setIsVisible(false)}
     >
       {showLowTvlWarning ? (
-        <div className="flex items-start gap-2 text-sm text-amber-600 dark:text-amber-400">
+        <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 whitespace-nowrap">
           <svg
-            className="w-5 h-5 mt-0.5 flex-shrink-0"
+            className="w-5 h-5 flex-shrink-0"
             fill="currentColor"
             viewBox="0 0 20 20"
           >

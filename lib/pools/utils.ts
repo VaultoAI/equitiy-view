@@ -23,11 +23,11 @@ export function calculateApr({
     return 0;
   }
   
-  // Calculate APR: (Fees 30d / 30 * 365 / TVL) * 100
-  // This annualizes the 30-day fees: (fees30d / 30) gives daily average, * 365 gives annual, / tvl gives rate, * 100 gives percentage
-  // Formula: (fees30d * 365 / (30 * tvl)) * 100
+  // Calculate APR: (Fees 30d * 12 / TVL) * 100
+  // This annualizes the 30-day fees: fees30d * 12 gives annual fees (12 * 30 = 360 days), / tvl gives rate, * 100 gives percentage
+  // Formula: (fees30d * 12 / tvl) * 100
   // Returns exact calculation as a number without any rounding
-  return (fees30d * 365 / (30 * tvl)) * 100;
+  return (fees30d * 12 / tvl) * 100;
 }
 
 export function sortPools(
