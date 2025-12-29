@@ -8,6 +8,28 @@ const DEFAULT_TICK_SPACING = 60;
 const REQUEST_TIMEOUT = 10000; // 10 seconds (reduced from 30s for faster failure detection)
 const MAX_RETRIES = 2;
 
+// USDC identification constants
+const USDC_ETHEREUM_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+const USDC_SYMBOL = 'USDC';
+const USDC_NAME = 'USD Coin';
+
+/**
+ * Checks if a token is USDC by comparing address, symbol, or name
+ * @param token - The token to check
+ * @returns true if the token is USDC, false otherwise
+ */
+function isUSDC(token: { address: string; symbol: string; name: string }): boolean {
+  const address = token.address.toLowerCase();
+  const symbol = token.symbol.toUpperCase();
+  const name = token.name;
+  
+  return (
+    address === USDC_ETHEREUM_ADDRESS.toLowerCase() ||
+    symbol === USDC_SYMBOL ||
+    name === USDC_NAME
+  );
+}
+
 // Tokenized stock addresses that have pools (chainId: 1 only)
 const TOKENIZED_STOCK_ADDRESSES = [
   '0xf3e4872e6a4cf365888d93b6146a2baa7348f1a4', // SLVon - USDC/SLVon
@@ -455,8 +477,11 @@ export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
             protocolVersion: 'V3',
           } as TablePool;
         })
-        // Filter to only include pools with TVL > 0
-        .filter((pool) => pool.tvl > 0);
+        // Filter to only include pools with TVL > 0 and that involve USDC
+        .filter((pool) => {
+          const hasUSDC = isUSDC(pool.token0) || isUSDC(pool.token1);
+          return hasUSDC && pool.tvl > 0;
+        });
 
       // Return the pool with the highest TVL for this token, or null if no valid pools
       return pools.length > 0 ? pools[0] : null;
