@@ -8,6 +8,7 @@ import { PoolTable } from '@/components/Pools/PoolTable';
 import { useTokenizedStockPools } from '@/hooks/useTokenizedStockPools';
 import { PoolSortFields, PoolTableSortState } from '@/lib/pools/types';
 import { VaultoLogo } from '@/components/VaultoLogo';
+import { CacheRefreshButton } from '@/components/CacheRefreshButton';
 
 export default function EthPage() {
   const { isConnected } = useAccount();
@@ -30,6 +31,9 @@ export default function EthPage() {
               className="h-8 md:h-12 w-auto"
             />
             <span className="text-base md:text-lg font-medium">Public</span>
+            <div className="hidden md:block">
+              <CacheRefreshButton />
+            </div>
           </div>
           {/* Mobile nav bar (includes wallet connect) */}
           <MobileNavBar />

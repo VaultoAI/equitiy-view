@@ -169,6 +169,8 @@ export function useSolanaPoolData(poolAddress: string) {
           {
             date: Math.floor(Date.now() / 1000),
             tvlUSD,
+            volumeUSD: volumeUSD24H,
+            price: pool.current_price || 0,
           },
         ]
       : [];

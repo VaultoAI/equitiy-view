@@ -6,6 +6,8 @@ import { gql } from '@apollo/client';
 import { apolloClient } from '@/lib/graphql/client';
 import { PoolData, Token, TVLDataPoint } from '@/lib/pools/types';
 import { getTokenLogoUrl } from '@/lib/utils/tokenLogo';
+import { isTokenizedStock } from '@/lib/pools/tokenizedStocks';
+import { getStockTicker } from '@/lib/utils/stockTicker';
 
 interface PoolDetailsResponse {
   pool: {
@@ -25,11 +27,17 @@ interface PoolDetailsResponse {
     feeTier: number;
     totalValueLockedUSD: string;
     txCount: string;
+    token0Price?: string;
+    token1Price?: string;
     poolDayData: Array<{
       date: number;
       volumeUSD: string;
       feesUSD: string;
       tvlUSD: string;
+      open?: string;
+      high?: string;
+      low?: string;
+      close?: string;
     }>;
   };
 }
@@ -53,6 +61,8 @@ const POOL_DETAILS_QUERY = gql`
       feeTier
       totalValueLockedUSD
       txCount
+      token0Price
+      token1Price
       poolDayData(
         orderBy: date
         orderDirection: desc
@@ -62,6 +72,10 @@ const POOL_DETAILS_QUERY = gql`
         volumeUSD
         feesUSD
         tvlUSD
+        open
+        high
+        low
+        close
       }
     }
   }
@@ -91,6 +105,61 @@ export function usePoolData(poolIdOrAddress: string) {
     },
     enabled: !!poolIdOrAddress,
     staleTime: 30000,
+  });
+
+  // Extract token info to check if it's a tokenized stock
+  const token0Address = data?.pool ? data.pool.token0.id.split('-')[0] : null;
+  const token1Address = data?.pool ? data.pool.token1.id.split('-')[0] : null;
+  const token0Symbol = data?.pool?.token0.symbol || '';
+  const token1Symbol = data?.pool?.token1.symbol || '';
+
+  // Check if either token is a tokenized stock
+  const isToken0Stock = token0Address ? isTokenizedStock(token0Address) : false;
+  const isToken1Stock = token1Address ? isTokenizedStock(token1Address) : false;
+  const isTokenizedStockPool = isToken0Stock || isToken1Stock;
+
+  // Determine which token is the stock and get its ticker
+  const stockToken = isToken0Stock 
+    ? { symbol: token0Symbol, address: token0Address }
+    : isToken1Stock 
+    ? { symbol: token1Symbol, address: token1Address }
+    : null;
+
+  const stockTicker = stockToken ? getStockTicker(stockToken.symbol, stockToken.address || undefined) : null;
+
+  // Fetch actual stock price for today if this is a tokenized stock pool
+  const { data: stockPriceData, error: stockPriceError } = useQuery({
+    queryKey: ['stockPrice', stockTicker],
+    queryFn: async () => {
+      if (!stockTicker) return null;
+
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const response = await fetch(`/api/stock-price?ticker=${stockTicker}&date=${today}`);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.warn(`⚠️ [Pool Data] Failed to fetch stock price for ${stockTicker}: ${response.status} ${response.statusText}`, errorData);
+          return null;
+        }
+
+        const data = await response.json();
+        
+        if (!data.price || typeof data.price !== 'number' || data.price <= 0) {
+          console.warn(`⚠️ [Pool Data] Invalid price data for ${stockTicker}:`, data);
+          return null;
+        }
+        
+        return data.price as number;
+      } catch (err) {
+        console.error(`❌ [Pool Data] Error fetching stock price for ${stockTicker}:`, err);
+        return null;
+      }
+    },
+    enabled: !!stockTicker && isTokenizedStockPool,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2, // Retry up to 2 times on failure
+    retryDelay: 1000, // Wait 1 second between retries
   });
 
   // Memoize poolData - must be called before any early returns to follow Rules of Hooks
@@ -137,14 +206,69 @@ export function usePoolData(poolIdOrAddress: string) {
       return sum + parseFloat(day.feesUSD || '0');
     }, 0);
 
+    // Get current pool price for fallback if historical prices aren't available
+    const currentToken0Price = pool.token0Price ? parseFloat(pool.token0Price) : null;
+    
+    // Calculate scaling factor for tokenized stocks
+    let scalingFactor: number | null = null;
+    if (isTokenizedStockPool && stockPriceData !== null && stockPriceData !== undefined && stockPriceData > 0 && dayData.length > 0) {
+      // Get the most recent GraphQL price (first item in dayData since it's ordered desc)
+      const mostRecentGraphQLPrice = dayData[0].close 
+        ? parseFloat(dayData[0].close) 
+        : currentToken0Price;
+      
+      // Validate both prices are valid numbers and positive
+      if (mostRecentGraphQLPrice && mostRecentGraphQLPrice > 0 && stockPriceData > 0) {
+        scalingFactor = stockPriceData / mostRecentGraphQLPrice;
+        
+        // Validate scaling factor is reasonable (between 0.1 and 1000 to avoid extreme values)
+        if (scalingFactor >= 0.1 && scalingFactor <= 1000) {
+          console.log(`📈 [Pool Data] Stock price scaling for ${stockTicker}:`, {
+            actualPrice: stockPriceData,
+            graphQLPrice: mostRecentGraphQLPrice,
+            scalingFactor: scalingFactor.toFixed(4),
+          });
+        } else {
+          console.warn(`⚠️ [Pool Data] Unusual scaling factor for ${stockTicker}: ${scalingFactor.toFixed(4)}. Skipping scaling.`);
+          scalingFactor = null;
+        }
+      } else {
+        console.warn(`⚠️ [Pool Data] Invalid prices for scaling ${stockTicker}:`, {
+          stockPrice: stockPriceData,
+          graphQLPrice: mostRecentGraphQLPrice,
+        });
+      }
+    } else if (isTokenizedStockPool && stockPriceError) {
+      console.warn(`⚠️ [Pool Data] Stock price fetch failed for ${stockTicker}, using unscaled prices`);
+    }
+    
     // Extract TVL time-series data (reverse to get chronological order: oldest to newest)
     const tvlHistory: TVLDataPoint[] = [...dayData]
       .reverse() // Reverse to get chronological order (oldest to newest)
-      .map((day) => ({
-        date: day.date,
-        tvlUSD: parseFloat(day.tvlUSD || '0'),
-      }))
-      .filter((point) => point.tvlUSD > 0); // Filter out zero values
+      .map((day) => {
+        // Calculate price: use close price from poolDayData if available, otherwise use current pool price
+        let price = 0;
+        if (day.close) {
+          // close is the price of token0 in terms of token1
+          price = parseFloat(day.close);
+        } else if (currentToken0Price !== null) {
+          // Fallback to current pool price if historical close price not available
+          price = currentToken0Price;
+        }
+        
+        // Apply scaling factor for tokenized stocks
+        if (scalingFactor !== null && scalingFactor > 0 && price > 0) {
+          price = price * scalingFactor;
+        }
+        
+        return {
+          date: day.date,
+          tvlUSD: parseFloat(day.tvlUSD || '0'),
+          volumeUSD: parseFloat(day.volumeUSD || '0'),
+          price: price,
+        };
+      })
+      .filter((point) => point.tvlUSD > 0); // Filter out zero TVL values
 
     // Memoize token objects to prevent new references on every render
     const token0Address = pool.token0.id.split('-')[0];
@@ -202,6 +326,9 @@ export function usePoolData(poolIdOrAddress: string) {
     data?.pool?.totalValueLockedUSD,
     data?.pool?.txCount,
     data?.pool?.poolDayData,
+    stockPriceData,
+    isTokenizedStockPool,
+    stockTicker,
   ]);
 
   if (!poolData) {

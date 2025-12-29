@@ -110,3 +110,34 @@ export function cacheExists(key: string): boolean {
   return cacheStore.has(key);
 }
 
+/**
+ * Retrieves cached data if it exists, regardless of validity
+ * @param key - Cache key
+ * @returns Cached data if exists, null otherwise
+ */
+export function getCachedDataIgnoringValidity<T>(key: string): T | null {
+  try {
+    const entry = cacheStore.get(key);
+    if (!entry) {
+      return null;
+    }
+    return entry.data as T;
+  } catch (error) {
+    console.error(`[Server Cache] Error reading cache for key ${key}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Gets the timestamp of a cache entry
+ * @param key - Cache key
+ * @returns Timestamp in milliseconds, or null if entry doesn't exist
+ */
+export function getCacheTimestamp(key: string): number | null {
+  const entry = cacheStore.get(key);
+  if (!entry) {
+    return null;
+  }
+  return entry.timestamp;
+}
+

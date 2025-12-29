@@ -16,6 +16,8 @@ query PoolDetails($poolId: ID!) {
     feeTier
     totalValueLockedUSD
     txCount
+    token0Price
+    token1Price
     poolDayData(
       orderBy: date
       orderDirection: desc
@@ -25,6 +27,10 @@ query PoolDetails($poolId: ID!) {
       volumeUSD
       feesUSD
       tvlUSD
+      open
+      high
+      low
+      close
     }
   }
 }

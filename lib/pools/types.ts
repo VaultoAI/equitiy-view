@@ -78,5 +78,7 @@ export type PoolToken = Token;
 export interface TVLDataPoint {
   date: number;
   tvlUSD: number;
+  volumeUSD: number;
+  price: number; // token0 price in USD (or token0/token1 ratio if USD not available)
 }
 
