@@ -38,6 +38,8 @@ export function useSolanaPools(sortState: PoolTableSortState = {
       return pools;
     },
     staleTime: 60 * 60 * 1000, // Cache for 1 hour (matches server cache TTL)
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes to pick up cron job updates
+    refetchOnWindowFocus: true, // Refetch when user returns to the tab
   });
 
   const allPools = allPoolsData || [];

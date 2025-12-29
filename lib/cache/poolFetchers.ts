@@ -5,7 +5,7 @@ import { getSolanaTokenLogoUrl, getSolanaTokenName, getTrackedSolanaTokenMints }
 
 const DEFAULT_QUERY_SIZE = 20;
 const DEFAULT_TICK_SPACING = 60;
-const REQUEST_TIMEOUT = 30000; // 30 seconds
+const REQUEST_TIMEOUT = 10000; // 10 seconds (reduced from 30s for faster failure detection)
 const MAX_RETRIES = 2;
 
 // Tokenized stock addresses that have pools (chainId: 1 only)
@@ -125,6 +125,7 @@ const METEORA_API_BASE_URL = 'https://dlmm-api.meteora.ag';
 
 /**
  * Fetches from external API with timeout and retry logic
+ * Skips retries for 404 responses (expected when pools don't exist)
  */
 async function fetchWithTimeoutAndRetry(
   url: string,
@@ -142,6 +143,12 @@ async function fetchWithTimeoutAndRetry(
       });
 
       clearTimeout(timeoutId);
+      
+      // Don't retry 404s - they're expected when pools don't exist
+      if (response.status === 404) {
+        return response;
+      }
+      
       return response;
     } catch (error) {
       if (attempt === retries) {
@@ -250,6 +257,75 @@ function feePercentageToBasisPoints(feePercentage: string): number {
  */
 function sortMintsLexically(mint1: string, mint2: string): [string, string] {
   return mint1 < mint2 ? [mint1, mint2] : [mint2, mint1];
+}
+
+/**
+ * Fetches a pool pair from Meteora API, trying separator formats sequentially (hyphen first, most common)
+ * @param trackedMint - The tracked prestock token mint address
+ * @param commonMint - The common token mint address (USDC)
+ * @returns The pool response if found, null otherwise
+ */
+async function fetchPoolPair(
+  trackedMint: string,
+  commonMint: string
+): Promise<MeteoraPoolResponse | null> {
+  // Sort mints lexicographically for the endpoint
+  const [mint1, mint2] = sortMintsLexically(trackedMint, commonMint);
+  
+  // Try separator formats sequentially, starting with hyphen (most common)
+  // This reduces API calls from 3 per pair to 1 per pair in most cases
+  const separatorFormats = ['-', '_', '/'];
+  
+  for (const separator of separatorFormats) {
+    try {
+      const lexicalMints = `${mint1}${separator}${mint2}`;
+      const url = `${METEORA_API_BASE_URL}/pair/group_pair/${lexicalMints}`;
+      
+      const response = await fetchWithTimeoutAndRetry(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Handle response - could be array or single object
+        let pools: MeteoraPoolResponse[] = [];
+        if (Array.isArray(data)) {
+          pools = data;
+        } else if (data && data.address) {
+          // Single pool object
+          pools = [data];
+        }
+        
+        // Find and return the first valid pool that matches our tokens
+        for (const pool of pools) {
+          if (pool && pool.address && pool.mint_x && pool.mint_y) {
+            // Verify this pool contains our tracked token and common token
+            const mintXLower = pool.mint_x.toLowerCase();
+            const mintYLower = pool.mint_y.toLowerCase();
+            const trackedLower = trackedMint.toLowerCase();
+            const commonLower = commonMint.toLowerCase();
+            
+            if ((mintXLower === trackedLower || mintYLower === trackedLower) &&
+                (mintXLower === commonLower || mintYLower === commonLower)) {
+              return pool;
+            }
+          }
+        }
+      } else if (response.status === 404) {
+        // Pool doesn't exist with this separator, try next one
+        continue;
+      }
+    } catch (err) {
+      // Try next separator format on error
+      continue;
+    }
+  }
+  
+  return null;
 }
 
 /**
@@ -400,6 +476,7 @@ export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
 
 /**
  * Fetches Solana pools from Meteora API
+ * Optimized to fetch all pairs in parallel for maximum performance
  */
 export async function fetchSolanaPools(): Promise<TablePool[]> {
   const TRACKED_SOLANA_TOKEN_MINTS = getTrackedSolanaTokenMints();
@@ -411,79 +488,35 @@ export async function fetchSolanaPools(): Promise<TablePool[]> {
   console.log(`🏊 [Pool Fetchers] Fetching Solana pools from Meteora API for ${TRACKED_SOLANA_TOKEN_MINTS.length} tracked tokens...`);
 
   try {
-    // Use /pair/group_pair/{lexical_order_mints} to fetch only specific pools
+    // Only fetch USDC pairs - all prestock pools are paired with USDC
+    // This reduces API calls from 15 (5 tokens × 3 common tokens) to 5 (5 tokens × 1 common token)
+    const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+    
+    // Generate all pair combinations upfront (only USDC pairs)
+    const pairCombinations: Array<[string, string]> = TRACKED_SOLANA_TOKEN_MINTS.map(
+      (trackedMint) => [trackedMint, USDC_MINT] as [string, string]
+    );
+    
+    console.log(`🚀 [Pool Fetchers] Fetching ${pairCombinations.length} USDC pool pairs in parallel...`);
+    
+    // Execute all pair fetches in parallel
+    const pairPromises = pairCombinations.map(([trackedMint, commonMint]) =>
+      fetchPoolPair(trackedMint, commonMint).catch((err) => {
+        console.warn(`⚠️ [Pool Fetchers] Error fetching pool for ${trackedMint}/${commonMint}:`, err);
+        return null;
+      })
+    );
+    
+    const poolResults = await Promise.allSettled(pairPromises);
+    
+    // Collect all valid pools into a map (deduplicate by address)
     const allPoolsMap = new Map<string, MeteoraPoolResponse>();
     
-    // Common tokens that our prestocks pair with
-    const commonTokenMints = Object.keys(SOLANA_COMMON_TOKEN_MINTS);
-    
-    // For each tracked prestock, fetch pools paired with each common token
-    for (const trackedMint of TRACKED_SOLANA_TOKEN_MINTS) {
-      for (const commonMint of commonTokenMints) {
-        try {
-          // Sort mints lexicographically for the endpoint
-          const [mint1, mint2] = sortMintsLexically(trackedMint, commonMint);
-          
-          // Try different separator formats (hyphen is most common)
-          const separatorFormats = ['-', '_', '/'];
-          let poolFound = false;
-          
-          for (const separator of separatorFormats) {
-            try {
-              const lexicalMints = `${mint1}${separator}${mint2}`;
-              const url = `${METEORA_API_BASE_URL}/pair/group_pair/${lexicalMints}`;
-              
-              const response = await fetchWithTimeoutAndRetry(url, {
-                method: 'GET',
-                headers: {
-                  'Accept': 'application/json',
-                },
-              });
-              
-              if (response.ok) {
-                const data = await response.json();
-                
-                // Handle response - could be array or single object
-                let pools: MeteoraPoolResponse[] = [];
-                if (Array.isArray(data)) {
-                  pools = data;
-                } else if (data && data.address) {
-                  // Single pool object
-                  pools = [data];
-                }
-                
-                // Add valid pools to map
-                pools.forEach((pool: MeteoraPoolResponse) => {
-                  if (pool && pool.address && pool.mint_x && pool.mint_y) {
-                    // Verify this pool contains our tracked token
-                    const mintXLower = pool.mint_x.toLowerCase();
-                    const mintYLower = pool.mint_y.toLowerCase();
-                    const trackedLower = trackedMint.toLowerCase();
-                    
-                    if ((mintXLower === trackedLower || mintYLower === trackedLower) &&
-                        (mintXLower === commonMint.toLowerCase() || mintYLower === commonMint.toLowerCase())) {
-                      allPoolsMap.set(pool.address, pool);
-                      poolFound = true;
-                    }
-                  }
-                });
-                
-                // If we found pools with this separator, break
-                if (poolFound) {
-                  break;
-                }
-              } else if (response.status === 404) {
-                // Pool doesn't exist for this pair, continue to next
-                continue;
-              }
-            } catch (err) {
-              // Try next separator format
-              continue;
-            }
-          }
-        } catch (err) {
-          // Log but continue to next pair
-          console.warn(`⚠️ [Pool Fetchers] Error fetching pool for ${trackedMint}/${commonMint}:`, err);
+    for (const result of poolResults) {
+      if (result.status === 'fulfilled' && result.value !== null) {
+        const pool = result.value;
+        if (pool && pool.address) {
+          allPoolsMap.set(pool.address, pool);
         }
       }
     }
