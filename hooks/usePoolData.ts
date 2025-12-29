@@ -127,36 +127,59 @@ export function usePoolData(poolIdOrAddress: string) {
 
   const stockTicker = stockToken ? getStockTicker(stockToken.symbol, stockToken.address || undefined) : null;
 
-  // Fetch actual stock price for today if this is a tokenized stock pool
-  const { data: stockPriceData, error: stockPriceError } = useQuery({
-    queryKey: ['stockPrice', stockTicker],
+  // Extract date range from poolDayData for historical stock price fetch
+  const dateRange = useMemo(() => {
+    const dayData = data?.pool?.poolDayData || [];
+    if (dayData.length === 0) return null;
+    
+    // poolDayData is ordered by date descending (most recent first)
+    // Find oldest and newest dates
+    const dates = dayData.map(day => day.date);
+    const oldestDate = Math.min(...dates);
+    const newestDate = Math.max(...dates);
+    
+    return { startDate: oldestDate, endDate: newestDate };
+  }, [data?.pool?.poolDayData]);
+
+  // Fetch historical stock prices for the date range if this is a tokenized stock pool
+  const { data: stockPriceHistoryData, error: stockPriceHistoryError } = useQuery({
+    queryKey: ['stockPriceHistory', stockTicker, dateRange?.startDate, dateRange?.endDate],
     queryFn: async () => {
-      if (!stockTicker) return null;
+      if (!stockTicker || !dateRange) return null;
 
       try {
-        const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`/api/stock-price?ticker=${stockTicker}&date=${today}`);
+        const response = await fetch(
+          `/api/stock-price-history?ticker=${stockTicker}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`
+        );
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          console.warn(`⚠️ [Pool Data] Failed to fetch stock price for ${stockTicker}: ${response.status} ${response.statusText}`, errorData);
+          console.warn(`⚠️ [Pool Data] Failed to fetch stock price history for ${stockTicker}: ${response.status} ${response.statusText}`, errorData);
           return null;
         }
 
         const data = await response.json();
         
-        if (!data.price || typeof data.price !== 'number' || data.price <= 0) {
-          console.warn(`⚠️ [Pool Data] Invalid price data for ${stockTicker}:`, data);
+        if (!data.prices || !Array.isArray(data.prices) || data.prices.length === 0) {
+          console.warn(`⚠️ [Pool Data] Invalid price history data for ${stockTicker}:`, data);
           return null;
         }
         
-        return data.price as number;
+        // Create a map of date (normalized to start of day) -> price for quick lookup
+        const priceMap = new Map<number, number>();
+        data.prices.forEach((item: { date: number; price: number }) => {
+          // Normalize date to start of day for matching
+          const normalizedDate = Math.floor(item.date / 86400) * 86400; // Round to start of day
+          priceMap.set(normalizedDate, item.price);
+        });
+        
+        return priceMap;
       } catch (err) {
-        console.error(`❌ [Pool Data] Error fetching stock price for ${stockTicker}:`, err);
+        console.error(`❌ [Pool Data] Error fetching stock price history for ${stockTicker}:`, err);
         return null;
       }
     },
-    enabled: !!stockTicker && isTokenizedStockPool,
+    enabled: !!stockTicker && isTokenizedStockPool && !!dateRange,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2, // Retry up to 2 times on failure
     retryDelay: 1000, // Wait 1 second between retries
@@ -209,56 +232,52 @@ export function usePoolData(poolIdOrAddress: string) {
     // Get current pool price for fallback if historical prices aren't available
     const currentToken0Price = pool.token0Price ? parseFloat(pool.token0Price) : null;
     
-    // Calculate scaling factor for tokenized stocks
-    let scalingFactor: number | null = null;
-    if (isTokenizedStockPool && stockPriceData !== null && stockPriceData !== undefined && stockPriceData > 0 && dayData.length > 0) {
-      // Get the most recent GraphQL price (first item in dayData since it's ordered desc)
-      const mostRecentGraphQLPrice = dayData[0].close 
-        ? parseFloat(dayData[0].close) 
-        : currentToken0Price;
-      
-      // Validate both prices are valid numbers and positive
-      if (mostRecentGraphQLPrice && mostRecentGraphQLPrice > 0 && stockPriceData > 0) {
-        scalingFactor = stockPriceData / mostRecentGraphQLPrice;
-        
-        // Validate scaling factor is reasonable (between 0.1 and 1000 to avoid extreme values)
-        if (scalingFactor >= 0.1 && scalingFactor <= 1000) {
-          console.log(`📈 [Pool Data] Stock price scaling for ${stockTicker}:`, {
-            actualPrice: stockPriceData,
-            graphQLPrice: mostRecentGraphQLPrice,
-            scalingFactor: scalingFactor.toFixed(4),
-          });
-        } else {
-          console.warn(`⚠️ [Pool Data] Unusual scaling factor for ${stockTicker}: ${scalingFactor.toFixed(4)}. Skipping scaling.`);
-          scalingFactor = null;
-        }
-      } else {
-        console.warn(`⚠️ [Pool Data] Invalid prices for scaling ${stockTicker}:`, {
-          stockPrice: stockPriceData,
-          graphQLPrice: mostRecentGraphQLPrice,
-        });
-      }
-    } else if (isTokenizedStockPool && stockPriceError) {
-      console.warn(`⚠️ [Pool Data] Stock price fetch failed for ${stockTicker}, using unscaled prices`);
-    }
-    
     // Extract TVL time-series data (reverse to get chronological order: oldest to newest)
     const tvlHistory: TVLDataPoint[] = [...dayData]
       .reverse() // Reverse to get chronological order (oldest to newest)
       .map((day) => {
-        // Calculate price: use close price from poolDayData if available, otherwise use current pool price
         let price = 0;
-        if (day.close) {
-          // close is the price of token0 in terms of token1
-          price = parseFloat(day.close);
-        } else if (currentToken0Price !== null) {
-          // Fallback to current pool price if historical close price not available
-          price = currentToken0Price;
-        }
         
-        // Apply scaling factor for tokenized stocks
-        if (scalingFactor !== null && scalingFactor > 0 && price > 0) {
-          price = price * scalingFactor;
+        // For tokenized stocks, use actual stock prices from yahoo-finance2
+        if (isTokenizedStockPool && stockPriceHistoryData) {
+          // Normalize date to start of day for matching
+          const normalizedDate = Math.floor(day.date / 86400) * 86400;
+          const stockPrice = stockPriceHistoryData.get(normalizedDate);
+          
+          if (stockPrice !== undefined && stockPrice !== null && stockPrice > 0) {
+            price = stockPrice;
+          } else {
+            // If no exact match, try to find closest date (for weekends/holidays)
+            // Find the closest date in the price map
+            let closestPrice: number | null = null;
+            let minDiff = Infinity;
+            
+            stockPriceHistoryData.forEach((p, date) => {
+              const diff = Math.abs(date - normalizedDate);
+              if (diff < minDiff && date <= normalizedDate) {
+                minDiff = diff;
+                closestPrice = p;
+              }
+            });
+            
+            if (closestPrice !== null && closestPrice > 0) {
+              price = closestPrice;
+            } else {
+              // Fallback to poolDayData.close if stock price not available
+              if (day.close) {
+                price = parseFloat(day.close);
+              } else if (currentToken0Price !== null) {
+                price = currentToken0Price;
+              }
+            }
+          }
+        } else {
+          // For non-tokenized stocks, use poolDayData.close prices (existing behavior)
+          if (day.close) {
+            price = parseFloat(day.close);
+          } else if (currentToken0Price !== null) {
+            price = currentToken0Price;
+          }
         }
         
         return {
@@ -269,6 +288,11 @@ export function usePoolData(poolIdOrAddress: string) {
         };
       })
       .filter((point) => point.tvlUSD > 0); // Filter out zero TVL values
+    
+    // Log if stock price history fetch failed
+    if (isTokenizedStockPool && stockPriceHistoryError) {
+      console.warn(`⚠️ [Pool Data] Stock price history fetch failed for ${stockTicker}, using poolDayData.close prices`);
+    }
 
     // Memoize token objects to prevent new references on every render
     const token0Address = pool.token0.id.split('-')[0];
@@ -326,7 +350,7 @@ export function usePoolData(poolIdOrAddress: string) {
     data?.pool?.totalValueLockedUSD,
     data?.pool?.txCount,
     data?.pool?.poolDayData,
-    stockPriceData,
+    stockPriceHistoryData,
     isTokenizedStockPool,
     stockTicker,
   ]);
