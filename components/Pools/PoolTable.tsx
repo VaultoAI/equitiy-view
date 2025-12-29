@@ -5,6 +5,7 @@ import { TablePool, PoolSortFields, PoolTableSortState } from '@/lib/pools/types
 import { PoolTableRow } from './PoolTableRow';
 import { formatCurrency, formatPercent } from '@/lib/utils/formatting';
 import { sortPools } from '@/lib/pools/utils';
+import { APRTooltip } from './APRTooltip';
 interface PoolTableProps {
   pools: TablePool[];
   loading: boolean;
@@ -217,7 +218,13 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
               <td className="px-4 py-3 text-sm">{formatCurrency(totals.fees30d)}</td>
               <td className="px-4 py-3 text-sm">{formatCurrency(totals.volume24h)}</td>
               <td className="px-4 py-3 text-sm">{formatCurrency(totals.volume30d)}</td>
-              <td className="px-4 py-3 text-sm">{formatPercent(totals.apr)}</td>
+              <td className="px-4 py-3 text-sm">
+                {totals.tvl < 100 ? (
+                  <APRTooltip apr="NA" showLowTvlWarning={true} />
+                ) : (
+                  <APRTooltip apr={formatPercent(totals.apr)} />
+                )}
+              </td>
             </tr>
           )}
         </tbody>

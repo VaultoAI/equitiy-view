@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { TablePool } from '@/lib/pools/types';
 import { PoolDescription } from './PoolDescription';
 import { formatCurrency, formatPercent } from '@/lib/utils/formatting';
+import { APRTooltip } from './APRTooltip';
 
 interface PoolTableRowProps {
   pool: TablePool;
@@ -33,7 +34,13 @@ export function PoolTableRow({ pool, chainId = 1 }: PoolTableRowProps) {
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.fees30d || 0)}</td>
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume24h)}</td>
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume30d)}</td>
-      <td className="px-4 py-3 text-sm">{formatPercent(pool.apr)}</td>
+      <td className="px-4 py-3 text-sm">
+        {pool.tvl < 100 ? (
+          <APRTooltip apr="NA" showLowTvlWarning={true} />
+        ) : (
+          <APRTooltip apr={formatPercent(pool.apr)} />
+        )}
+      </td>
     </tr>
   );
 }
