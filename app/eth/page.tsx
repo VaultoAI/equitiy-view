@@ -30,7 +30,7 @@ export default function EthPage() {
               height={50}
               className="h-8 md:h-12 w-auto"
             />
-            <span className="text-base md:text-lg font-medium">Public</span>
+            <span className="hidden md:inline text-base md:text-lg font-medium">Public</span>
             <div className="hidden md:block">
               <CacheRefreshButton />
             </div>
