@@ -7,7 +7,7 @@ import { PoolTable } from '@/components/Pools/PoolTable';
 import { useSolanaPools } from '@/hooks/useSolanaPools';
 import { PoolSortFields, PoolTableSortState } from '@/lib/pools/types';
 import { VaultoLogo } from '@/components/VaultoLogo';
-import { CacheRefreshButton, MobileCacheRefreshButton } from '@/components/CacheRefreshButton';
+import { CacheRefreshButton } from '@/components/CacheRefreshButton';
 
 export default function SolPage() {
   const [sortState] = useState<PoolTableSortState>({
@@ -31,9 +31,6 @@ export default function SolPage() {
             <span className="hidden md:inline text-base md:text-lg font-medium">Private</span>
             <div className="hidden md:block">
               <CacheRefreshButton />
-            </div>
-            <div className="md:hidden">
-              <MobileCacheRefreshButton />
             </div>
           </div>
           {/* Mobile nav bar (includes wallet connect) */}
