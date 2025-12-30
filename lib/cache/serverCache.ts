@@ -141,3 +141,81 @@ export function getCacheTimestamp(key: string): number | null {
   return entry.timestamp;
 }
 
+/**
+ * Verifies that a cache entry was cleared (doesn't exist)
+ * @param key - Cache key to verify
+ * @returns True if cache is cleared (doesn't exist), false otherwise
+ */
+export function verifyCacheCleared(key: string): boolean {
+  return !cacheExists(key);
+}
+
+/**
+ * Verifies that a cache entry was set correctly
+ * @param key - Cache key to verify
+ * @param expectedDataLength - Optional expected data length (for arrays)
+ * @returns Object with verification status and details
+ */
+export function verifyCacheSet<T>(key: string, expectedDataLength?: number): {
+  isSet: boolean;
+  hasData: boolean;
+  dataLength?: number;
+  timestamp: number | null;
+} {
+  const exists = cacheExists(key);
+  const data = exists ? getCachedDataIgnoringValidity<T>(key) : null;
+  const timestamp = getCacheTimestamp(key);
+  
+  const result: {
+    isSet: boolean;
+    hasData: boolean;
+    dataLength?: number;
+    timestamp: number | null;
+  } = {
+    isSet: exists,
+    hasData: data !== null,
+    timestamp,
+  };
+  
+  if (Array.isArray(data)) {
+    result.dataLength = data.length;
+  }
+  
+  if (expectedDataLength !== undefined && Array.isArray(data)) {
+    result.isSet = result.isSet && data.length === expectedDataLength;
+  }
+  
+  return result;
+}
+
+/**
+ * Gets all cache keys currently in the store (for debugging)
+ * @returns Array of all cache keys
+ */
+export function getAllCacheKeys(): string[] {
+  return Array.from(cacheStore.keys());
+}
+
+/**
+ * Logs the current state of all caches (for debugging)
+ */
+export function logCacheState(): void {
+  const keys = getAllCacheKeys();
+  console.log(`📊 [Server Cache] Current cache state: ${keys.length} entries`);
+  keys.forEach((key) => {
+    const timestamp = getCacheTimestamp(key);
+    const age = getCacheAge(key);
+    const isValid = timestamp ? isCacheValid(timestamp) : false;
+    const data = getCachedDataIgnoringValidity(key);
+    const dataLength = Array.isArray(data) ? data.length : 'N/A';
+    
+    console.log(`  - ${key}:`, {
+      exists: true,
+      timestamp: timestamp ? new Date(timestamp).toISOString() : null,
+      age: age ? `${Math.floor(age / 1000)}s` : null,
+      isValid,
+      dataLength,
+    });
+  });
+}
+

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { CompactWalletConnect } from '@/components/WalletConnect';
+import { MobileCacheRefreshButton } from '@/components/CacheRefreshButton';
 
 const HomeIcon = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -89,6 +90,9 @@ export function MobileNavBar() {
             </Link>
           );
         })}
+        <div className="w-10 h-10 flex items-center justify-center">
+          <MobileCacheRefreshButton className="w-full h-full text-white hover:bg-gray-800 dark:hover:bg-gray-800 rounded-full" />
+        </div>
         <CompactWalletConnect />
       </div>
     </nav>
