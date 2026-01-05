@@ -40,7 +40,7 @@ function PoolDetailsContent() {
                 height={50}
                 className="h-8 md:h-12 w-auto"
               />
-              <span className="text-base md:text-lg font-medium">Pool</span>
+              <span className="hidden md:inline text-base md:text-lg font-medium">Pool</span>
             </div>
             {/* Mobile nav bar (includes wallet connect) */}
             <MobileNavBar />
@@ -73,7 +73,7 @@ function PoolDetailsContent() {
               height={50}
               className="h-8 md:h-12 w-auto"
             />
-            <span className="text-base md:text-lg font-medium">Pool</span>
+            <span className="hidden md:inline text-base md:text-lg font-medium">Pool</span>
           </div>
           {/* Mobile nav bar (includes wallet connect) */}
           <MobileNavBar />
