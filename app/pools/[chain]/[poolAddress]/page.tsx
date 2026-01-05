@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { usePoolData } from '@/hooks/usePoolData';
 import { PoolDetailsHeader } from '@/components/Pools/PoolDetails/PoolDetailsHeader';
@@ -11,6 +12,48 @@ import { MobileNavBar } from '@/components/Navigation/VerticalNav';
 import { CreateLiquidityProvider } from '@/contexts/CreateLiquidityContext';
 import { AddLiquidityForm } from '@/components/Liquidity/CreatePosition/AddLiquidityForm';
 import { VaultoLogo } from '@/components/VaultoLogo';
+
+function MobileScrollLock() {
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 767px)');
+
+    const prev = {
+      htmlOverflow: document.documentElement.style.overflow,
+      bodyOverflow: document.body.style.overflow,
+      htmlOverscroll: document.documentElement.style.overscrollBehavior,
+      bodyOverscroll: document.body.style.overscrollBehavior,
+    };
+
+    const apply = () => {
+      if (!mql.matches) return;
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overscrollBehavior = 'none';
+      document.body.style.overscrollBehavior = 'none';
+    };
+
+    const cleanup = () => {
+      document.documentElement.style.overflow = prev.htmlOverflow;
+      document.body.style.overflow = prev.bodyOverflow;
+      document.documentElement.style.overscrollBehavior = prev.htmlOverscroll;
+      document.body.style.overscrollBehavior = prev.bodyOverscroll;
+    };
+
+    const onChange = () => {
+      cleanup();
+      apply();
+    };
+
+    apply();
+    mql.addEventListener('change', onChange);
+    return () => {
+      mql.removeEventListener('change', onChange);
+      cleanup();
+    };
+  }, []);
+
+  return null;
+}
 
 function PoolDetailsContent() {
   const params = useParams();
@@ -133,6 +176,7 @@ function PoolDetailsContent() {
 export default function PoolDetailsPage() {
   return (
     <CreateLiquidityProvider>
+      <MobileScrollLock />
       <PoolDetailsContent />
     </CreateLiquidityProvider>
   );
