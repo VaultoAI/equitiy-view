@@ -10,23 +10,47 @@ const CACHE_KEY = 'tokenizedStockPools';
 
 export async function GET(request: NextRequest) {
   try {
+    // If the client explicitly requests fresh data, bypass the server cache.
+    // This is used by the ETH pools page to ensure users always see up-to-date pools.
+    const searchParams = request.nextUrl.searchParams;
+    const freshParam = searchParams.get('fresh');
+    const forceFresh = freshParam === '1' || freshParam === 'true';
+
     // Check cache first
-    const cachedData = getCachedData<TablePool[]>(CACHE_KEY);
+    const cachedData = forceFresh ? null : getCachedData<TablePool[]>(CACHE_KEY);
     
     if (cachedData !== null) {
       console.log(`✅ [Tokenized Stock Pools API] Returning cached data (${cachedData.length} pools)`);
-      return NextResponse.json({ pools: cachedData, cached: true });
+      return NextResponse.json(
+        { pools: cachedData, cached: true },
+        {
+          headers: {
+            // Prevent intermediary caching of the API response.
+            'Cache-Control': 'no-store',
+          },
+        }
+      );
     }
 
     // Cache miss or expired, fetch fresh data
-    console.log(`🔄 [Tokenized Stock Pools API] Cache miss, fetching fresh data...`);
+    console.log(
+      `🔄 [Tokenized Stock Pools API] ${forceFresh ? 'Force-fresh request' : 'Cache miss'}, fetching fresh data...`
+    );
     const pools = await fetchTokenizedStockPools();
     
     // Update cache
     setCachedData(CACHE_KEY, pools);
     console.log(`💾 [Tokenized Stock Pools API] Cached ${pools.length} pools for 1 hour`);
     
-    return NextResponse.json({ pools, cached: false });
+    return NextResponse.json(
+      { pools, cached: false },
+      {
+        headers: {
+          // Prevent intermediary caching of the API response.
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
   } catch (error) {
     console.error('❌ [Tokenized Stock Pools API] Error:', error);
     return NextResponse.json(
