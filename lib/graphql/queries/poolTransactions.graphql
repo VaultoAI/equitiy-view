@@ -1,0 +1,84 @@
+query PoolTransactions($poolId: ID!, $first: Int!) {
+  swaps(
+    where: { pool: $poolId }
+    orderBy: timestamp
+    orderDirection: desc
+    first: $first
+  ) {
+    id
+    transaction {
+      id
+      timestamp
+    }
+    sender
+    recipient
+    amount0
+    amount1
+    amountUSD
+    pool {
+      token0 {
+        symbol
+        decimals
+      }
+      token1 {
+        symbol
+        decimals
+      }
+    }
+  }
+  mints(
+    where: { pool: $poolId }
+    orderBy: timestamp
+    orderDirection: desc
+    first: $first
+  ) {
+    id
+    transaction {
+      id
+      timestamp
+    }
+    owner
+    sender
+    amount
+    amount0
+    amount1
+    amountUSD
+    pool {
+      token0 {
+        symbol
+        decimals
+      }
+      token1 {
+        symbol
+        decimals
+      }
+    }
+  }
+  burns(
+    where: { pool: $poolId }
+    orderBy: timestamp
+    orderDirection: desc
+    first: $first
+  ) {
+    id
+    transaction {
+      id
+      timestamp
+    }
+    owner
+    amount
+    amount0
+    amount1
+    amountUSD
+    pool {
+      token0 {
+        symbol
+        decimals
+      }
+      token1 {
+        symbol
+        decimals
+      }
+    }
+  }
+}

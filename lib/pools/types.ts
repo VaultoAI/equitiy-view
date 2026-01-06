@@ -82,3 +82,18 @@ export interface TVLDataPoint {
   price: number; // token0 price in USD (or token0/token1 ratio if USD not available)
 }
 
+export interface PoolTransaction {
+  type: 'swap' | 'mint' | 'burn';
+  timestamp: number;
+  transactionHash: string;
+  amount0: string;
+  amount1: string;
+  amountUSD: string;
+  sender?: string;
+  owner?: string;
+  token0Symbol: string;
+  token1Symbol: string;
+  token0Decimals: number;
+  token1Decimals: number;
+}
+

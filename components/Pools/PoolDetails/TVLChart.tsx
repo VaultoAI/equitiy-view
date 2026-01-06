@@ -228,14 +228,27 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
     return [domainMin, domainMax];
   }, [baseChartData]);
 
-  // Normalize volatility values to fit USD domain range
+  // Normalize volatility values to match volume graph maximum height
   const normalizedVolatility = useMemo(() => {
-    if (!volatilityData || volatilityData.length === 0 || !usdDomain || usdDomain[0] === 'auto') {
+    if (!volatilityData || volatilityData.length === 0 || !baseChartData || baseChartData.length === 0) {
       return [];
     }
 
-    const [usdMin, usdMax] = usdDomain as [number, number];
-    const usdRange = usdMax - usdMin;
+    // Get volume values to determine the max height
+    const volumeValues = baseChartData.map(d => d.volume).filter(v => v > 0);
+    
+    if (volumeValues.length === 0) {
+      return volatilityData.map(() => 0);
+    }
+
+    // Calculate volume max (with same padding as USD domain)
+    const volumeMin = Math.min(...volumeValues);
+    const volumeMax = Math.max(...volumeValues);
+    const volumeRange = volumeMax - volumeMin;
+    const padding = volumeRange * 0.1;
+    const volumeDomainMax = volumeMax + padding;
+    const volumeDomainMin = Math.max(0, volumeMin - padding);
+    const volumeDomainRange = volumeDomainMax - volumeDomainMin;
 
     // Filter out zero volatility values for min/max calculation
     const validVolatilities = volatilityData.filter(v => v > 0);
@@ -248,18 +261,19 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
     const volMax = Math.max(...validVolatilities);
     const volRange = volMax - volMin;
 
-    // If all volatility values are the same, center them in the domain
+    // If all volatility values are the same, center them at half the volume max
     if (volRange === 0) {
-      const centerValue = (usdMin + usdMax) / 2;
+      const centerValue = volumeDomainMax / 2;
       return volatilityData.map(() => centerValue);
     }
 
-    // Normalize: scale volatility to USD domain range
+    // Normalize: scale volatility to volume domain range (0 to volumeDomainMax)
     return volatilityData.map(vol => {
       if (vol === 0) return 0;
-      return ((vol - volMin) / volRange) * usdRange + usdMin;
+      // Scale volatility so its max matches volumeDomainMax
+      return ((vol - volMin) / volRange) * volumeDomainRange + volumeDomainMin;
     });
-  }, [volatilityData, usdDomain]);
+  }, [volatilityData, baseChartData]);
 
   // Merge normalized volatility into chart data
   const chartData = useMemo<ChartDataPoint[]>(() => {
