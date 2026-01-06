@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { usePoolData } from '@/hooks/usePoolData';
 import { PoolDetailsHeader } from '@/components/Pools/PoolDetails/PoolDetailsHeader';
@@ -10,6 +11,49 @@ import { PoolTransactionsTable } from '@/components/Pools/PoolDetails/PoolTransa
 import { WalletConnect } from '@/components/WalletConnect';
 import { MobileNavBar } from '@/components/Navigation/VerticalNav';
 import { VaultoLogo } from '@/components/VaultoLogo';
+import { CreateLiquidityProvider } from '@/contexts/CreateLiquidityContext';
+
+function MobileScrollLock() {
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 767px)');
+
+    const prev = {
+      htmlOverflow: document.documentElement.style.overflow,
+      bodyOverflow: document.body.style.overflow,
+      htmlOverscroll: document.documentElement.style.overscrollBehavior,
+      bodyOverscroll: document.body.style.overscrollBehavior,
+    };
+
+    const apply = () => {
+      if (!mql.matches) return;
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overscrollBehavior = 'none';
+      document.body.style.overscrollBehavior = 'none';
+    };
+
+    const cleanup = () => {
+      document.documentElement.style.overflow = prev.htmlOverflow;
+      document.body.style.overflow = prev.bodyOverflow;
+      document.documentElement.style.overscrollBehavior = prev.htmlOverscroll;
+      document.body.style.overscrollBehavior = prev.bodyOverscroll;
+    };
+
+    const onChange = () => {
+      cleanup();
+      apply();
+    };
+
+    apply();
+    mql.addEventListener('change', onChange);
+    return () => {
+      mql.removeEventListener('change', onChange);
+      cleanup();
+    };
+  }, []);
+
+  return null;
+}
 
 function PoolDetailsContent() {
   const params = useParams();
@@ -72,7 +116,7 @@ function PoolDetailsContent() {
               height={50}
               className="h-8 md:h-12 w-auto"
             />
-            <span className="text-base md:text-lg font-medium">Pool</span>
+            <span className="hidden md:inline text-base md:text-lg font-medium">Pool</span>
           </div>
           {/* Mobile nav bar (includes wallet connect) */}
           <MobileNavBar />
@@ -89,13 +133,13 @@ function PoolDetailsContent() {
               <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {/* Mobile shows 4 stats (2x2); the 5th card is desktop-only */}
               {[...Array(4)].map((_, index) => (
                 <div key={index} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
                   <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-16 mb-2"></div>
                   <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
                 </div>
               ))}
-              {/* Hidden on mobile, visible on desktop */}
               <div className="hidden md:block bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
                 <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-16 mb-2"></div>
                 <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
@@ -129,6 +173,11 @@ function PoolDetailsContent() {
 }
 
 export default function PoolDetailsPage() {
-  return <PoolDetailsContent />;
+  return (
+    <CreateLiquidityProvider>
+      <MobileScrollLock />
+      <PoolDetailsContent />
+    </CreateLiquidityProvider>
+  );
 }
 
