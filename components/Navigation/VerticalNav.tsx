@@ -64,8 +64,8 @@ export function MobileNavBar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'My Wallet', icon: HomeIcon },
-    { href: '/eth', label: 'Tokenized Stocks', icon: EthIcon },
+    { href: '/wallet', label: 'My Wallet', icon: HomeIcon },
+    { href: '/stake', label: 'Tokenized Stocks', icon: EthIcon },
     { href: '/sol', label: 'Solana Pools', icon: SolIcon },
   ];
 
@@ -73,7 +73,9 @@ export function MobileNavBar() {
     <nav className="md:hidden z-50">
       <div className="bg-gray-900 dark:bg-gray-950 rounded-full border border-gray-700 dark:border-gray-600 p-1.5 flex gap-1.5">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
+          const isActive = pathname === item.href || 
+            (item.href === '/wallet' && pathname === '/') ||
+            (item.href !== '/wallet' && pathname?.startsWith(item.href));
           const IconComponent = item.icon;
           return (
             <Link
@@ -103,8 +105,8 @@ export function VerticalNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'My Wallet', icon: HomeIcon },
-    { href: '/eth', label: 'Tokenized Stocks', icon: EthIcon },
+    { href: '/wallet', label: 'My Wallet', icon: HomeIcon },
+    { href: '/stake', label: 'Tokenized Stocks', icon: EthIcon },
     { href: '/sol', label: 'Solana Pools', icon: SolIcon },
   ];
 
@@ -114,7 +116,9 @@ export function VerticalNav() {
       <nav className="hidden md:block fixed left-4 top-1/2 -translate-y-1/2 z-50">
         <div className="bg-gray-900 dark:bg-gray-950 rounded-full border border-gray-700 dark:border-gray-600 p-2 flex flex-col gap-2">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
+            const isActive = pathname === item.href || 
+              (item.href === '/wallet' && pathname === '/') ||
+              (item.href !== '/wallet' && pathname?.startsWith(item.href));
             const IconComponent = item.icon;
             return (
               <Link
