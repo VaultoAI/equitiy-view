@@ -229,6 +229,60 @@ export function usePoolData(poolIdOrAddress: string) {
       return sum + parseFloat(day.feesUSD || '0');
     }, 0);
 
+    // Calculate TVL 24h percentage change
+    // Compare most recent day's TVL with previous day's TVL (24h ago)
+    let tvlUSD24HChange: number | undefined;
+    if (dayData.length >= 2) {
+      const currentDayTvl = parseFloat(dayData[0].tvlUSD || '0');
+      const previousDayTvl = parseFloat(dayData[1].tvlUSD || '0');
+      if (previousDayTvl > 0 && currentDayTvl > 0) {
+        const change = ((currentDayTvl - previousDayTvl) / previousDayTvl) * 100;
+        // Only include if there's a meaningful change (|change| > 0.001%)
+        // Lowered threshold to show more changes
+        if (Math.abs(change) > 0.001 && !isNaN(change) && isFinite(change)) {
+          tvlUSD24HChange = change;
+        }
+      }
+    }
+
+    // Calculate 24h fees difference (current day - previous day)
+    let feesUSD24HDiff: number | undefined;
+    if (dayData.length >= 2) {
+      const previousFees = parseFloat(dayData[1].feesUSD || '0');
+      const diff = feesUSD24H - previousFees;
+      // Only set if the difference is a valid number
+      if (!isNaN(diff) && isFinite(diff)) {
+        feesUSD24HDiff = diff;
+      }
+      
+      // Log for debugging
+      console.log(`📊 [Pool Details ${pool.id}] 24h fees change:`, {
+        currentFees: feesUSD24H,
+        previousFees,
+        diff: feesUSD24HDiff,
+        dayDataLength: dayData.length,
+      });
+    }
+    
+    // Log TVL change for debugging
+    if (dayData.length >= 2) {
+      const currentDayTvl = parseFloat(dayData[0].tvlUSD || '0');
+      const previousDayTvl = parseFloat(dayData[1].tvlUSD || '0');
+      console.log(`📊 [Pool Details ${pool.id}] 24h TVL change:`, {
+        currentTvl: tvlUSD,
+        currentDayTvl,
+        previousDayTvl,
+        change: tvlUSD24HChange,
+        dayDataLength: dayData.length,
+        dayData0Date: dayData[0]?.date,
+        dayData1Date: dayData[1]?.date,
+      });
+    } else {
+      console.log(`📊 [Pool Details ${pool.id}] Not enough day data for 24h changes:`, {
+        dayDataLength: dayData.length,
+      });
+    }
+
     // Get current pool price for fallback if historical prices aren't available
     const currentToken0Price = pool.token0Price ? parseFloat(pool.token0Price) : null;
     
@@ -335,6 +389,8 @@ export function usePoolData(poolIdOrAddress: string) {
       },
       txCount: parseInt(pool.txCount || '0'),
       tvlHistory,
+      tvlUSD24HChange,
+      feesUSD24HDiff,
     };
   }, [
     data?.pool?.id,

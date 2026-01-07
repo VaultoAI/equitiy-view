@@ -34,6 +34,8 @@ export interface TablePool {
   };
   protocolVersion: 'V2' | 'V3' | 'V4';
   hookAddress?: string;
+  tvl24HChange?: number;  // Percentage change (e.g., 5.2 for +5.2%)
+  fees24HDiff?: number;   // Dollar difference (e.g., 500 for +$500)
 }
 
 export interface PoolData {
@@ -54,6 +56,8 @@ export interface PoolData {
   txCount?: number;
   hookAddress?: string;
   tvlHistory?: TVLDataPoint[];
+  tvlUSD24HChange?: number;  // Percentage change (e.g., 5.2 for +5.2%)
+  feesUSD24HDiff?: number;   // Dollar difference (e.g., 500 for +$500)
 }
 
 export enum PoolSortFields {

@@ -34,6 +34,7 @@ query TopV3Pools($first: Int!, $tokenAddress: String!) {
       date
       volumeUSD
       feesUSD
+      tvlUSD
     }
   }
 }

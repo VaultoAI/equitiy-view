@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { TablePool } from '@/lib/pools/types';
 import { PoolDescription } from './PoolDescription';
-import { formatCurrency, formatPercent } from '@/lib/utils/formatting';
+import { formatCurrency, formatPercent, formatPercentChange } from '@/lib/utils/formatting';
 import { APRTooltip } from './APRTooltip';
 
 interface PoolTableRowProps {
@@ -29,8 +29,39 @@ export function PoolTableRow({ pool, chainId = 1 }: PoolTableRowProps) {
           </Link>
         )}
       </td>
-      <td className="px-4 py-3 text-sm font-medium">{formatCurrency(pool.tvl)}</td>
-      <td className="px-4 py-3 text-sm">{formatCurrency(pool.fees24h || 0)}</td>
+      <td className="px-4 py-3 text-sm font-medium">
+        <div className="flex items-baseline gap-2">
+          <span>{formatCurrency(pool.tvl)}</span>
+          {pool.tvl24HChange !== undefined && (
+            <span
+              className={`text-xs ${
+                pool.tvl24HChange >= 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-red-600 dark:text-red-400'
+              }`}
+            >
+              {formatPercentChange(pool.tvl24HChange)}
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-sm">
+        <div className="flex items-baseline gap-2">
+          <span>{formatCurrency(pool.fees24h || 0)}</span>
+          {pool.fees24HDiff !== undefined && (
+            <span
+              className={`text-xs ${
+                pool.fees24HDiff >= 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-red-600 dark:text-red-400'
+              }`}
+            >
+              {pool.fees24HDiff >= 0 ? '+' : ''}
+              {formatCurrency(pool.fees24HDiff)}
+            </span>
+          )}
+        </div>
+      </td>
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.fees30d || 0)}</td>
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume24h)}</td>
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume30d)}</td>

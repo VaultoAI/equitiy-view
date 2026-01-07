@@ -24,4 +24,9 @@ export function formatNumber(value: number, decimals: number = 2): string {
   });
 }
 
+export function formatPercentChange(value: number): string {
+  const sign = value >= 0 ? '+' : '';
+  return `${sign}${value.toFixed(2)}%`;
+}
+
 

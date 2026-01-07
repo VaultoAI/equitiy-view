@@ -35,6 +35,7 @@ interface PoolResponse {
       date: number;
       volumeUSD: string;
       feesUSD: string;
+      tvlUSD: string;
     }>;
   }>;
 }
@@ -76,6 +77,7 @@ const TOP_V3_POOLS_QUERY = gql`
         date
         volumeUSD
         feesUSD
+        tvlUSD
       }
     }
   }
@@ -174,6 +176,32 @@ export function useWalletPools(sortState: PoolTableSortState = {
               return sum + parseFloat(day.feesUSD || '0');
             }, 0);
 
+            // Calculate TVL 24h percentage change
+            // Compare most recent day's TVL with previous day's TVL (24h ago)
+            let tvl24HChange: number | undefined;
+            if (dayData.length >= 2) {
+              const currentDayTvl = parseFloat(dayData[0].tvlUSD || '0');
+              const previousDayTvl = parseFloat(dayData[1].tvlUSD || '0');
+              if (previousDayTvl > 0 && currentDayTvl > 0) {
+                const change = ((currentDayTvl - previousDayTvl) / previousDayTvl) * 100;
+                // Only include if there's a meaningful change (|change| > 0.001%)
+                if (Math.abs(change) > 0.001 && !isNaN(change) && isFinite(change)) {
+                  tvl24HChange = change;
+                }
+              }
+            }
+
+            // Calculate 24h fees difference (current day - previous day)
+            let fees24HDiff: number | undefined;
+            if (dayData.length >= 2) {
+              const previousFees = parseFloat(dayData[1].feesUSD || '0');
+              const diff = fees24h - previousFees;
+              // Only set if the difference is a valid number
+              if (!isNaN(diff) && isFinite(diff)) {
+                fees24HDiff = diff;
+              }
+            }
+
             const token0Address = pool.token0.id.split('-')[0];
             const token1Address = pool.token1.id.split('-')[0];
 
@@ -213,6 +241,8 @@ export function useWalletPools(sortState: PoolTableSortState = {
                 isDynamic: false,
               },
               protocolVersion: 'V3',
+              tvl24HChange,
+              fees24HDiff,
             } as TablePool;
           });
 
