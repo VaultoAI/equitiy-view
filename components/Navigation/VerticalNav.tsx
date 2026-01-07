@@ -65,7 +65,7 @@ export function MobileNavBar() {
 
   const navItems = [
     { href: '/wallet', label: 'My Wallet', icon: HomeIcon },
-    { href: '/stake', label: 'Tokenized Stocks', icon: EthIcon },
+    { href: '/', label: 'Tokenized Stocks', icon: EthIcon },
     { href: '/sol', label: 'Solana Pools', icon: SolIcon },
   ];
 
@@ -74,8 +74,8 @@ export function MobileNavBar() {
       <div className="bg-gray-900 dark:bg-gray-950 rounded-full border border-gray-700 dark:border-gray-600 p-1.5 flex gap-1.5">
         {navItems.map((item) => {
           const isActive = pathname === item.href || 
-            (item.href === '/wallet' && pathname === '/') ||
-            (item.href !== '/wallet' && pathname?.startsWith(item.href));
+            (item.href === '/' && pathname === '/') ||
+            (item.href !== '/' && pathname?.startsWith(item.href));
           const IconComponent = item.icon;
           return (
             <Link
@@ -106,7 +106,7 @@ export function VerticalNav() {
 
   const navItems = [
     { href: '/wallet', label: 'My Wallet', icon: HomeIcon },
-    { href: '/stake', label: 'Tokenized Stocks', icon: EthIcon },
+    { href: '/', label: 'Tokenized Stocks', icon: EthIcon },
     { href: '/sol', label: 'Solana Pools', icon: SolIcon },
   ];
 
@@ -117,8 +117,8 @@ export function VerticalNav() {
         <div className="bg-gray-900 dark:bg-gray-950 rounded-full border border-gray-700 dark:border-gray-600 p-2 flex flex-col gap-2">
           {navItems.map((item) => {
             const isActive = pathname === item.href || 
-              (item.href === '/wallet' && pathname === '/') ||
-              (item.href !== '/wallet' && pathname?.startsWith(item.href));
+              (item.href === '/' && pathname === '/') ||
+              (item.href !== '/' && pathname?.startsWith(item.href));
             const IconComponent = item.icon;
             return (
               <Link
