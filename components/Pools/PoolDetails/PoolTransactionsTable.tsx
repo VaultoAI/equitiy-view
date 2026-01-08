@@ -78,12 +78,23 @@ function formatTokenAmount(amount: string, decimals: number): string {
   return rounded.toFixed(1).replace(/\.?0+$/, '') || '0';
 }
 
+function isCollectTransaction(tx: PoolTransaction): boolean {
+  const amount0Num = parseFloat(tx.amount0);
+  const amount1Num = parseFloat(tx.amount1);
+  return tx.type === 'burn' && amount0Num === 0 && amount1Num === 0;
+}
+
 function getTransactionTypeLabel(
   type: PoolTransaction['type'],
   tx: PoolTransaction,
   poolData?: PoolData,
   isMobile: boolean = false
 ): string {
+  // Check if this is a collect transaction (burn with zero amounts)
+  if (isCollectTransaction(tx)) {
+    return isMobile ? 'Collect' : 'Collect Fees';
+  }
+  
   switch (type) {
     case 'swap':
       // Check if this is a tokenized stock pool and determine buy/sell
@@ -128,7 +139,12 @@ function getTransactionTypeLabel(
   }
 }
 
-function getTransactionTypeStyles(type: PoolTransaction['type'], label?: string): string {
+function getTransactionTypeStyles(type: PoolTransaction['type'], label?: string, isCollect?: boolean): string {
+  // Handle Collect transactions with blue styling
+  if (isCollect || label === 'Collect' || label === 'Collect Fees') {
+    return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200';
+  }
+  
   // Handle Buy Stock, Buy, Sell Stock, and Sell with specific colors
   if (label === 'Buy Stock' || label === 'Buy') {
     return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
@@ -271,47 +287,58 @@ export function PoolTransactionsTable({ poolAddress, poolData }: PoolTransaction
                     {amountUSDNum > 0 ? formatCurrency(amountUSDNum) : '—'}
                   </td>
                   <td className="py-2 md:py-3 px-1 md:px-5 text-center md:text-left text-xs md:text-sm text-gray-900 dark:text-gray-100">
-                    <div className="flex flex-col md:flex-col gap-0.5 md:gap-1 items-center md:items-start">
-                      {amount0Num !== 0 && (
-                        <div className="flex items-center gap-0.5 md:gap-2 min-w-0 justify-center md:justify-start">
-                          {poolData && (
-                            <TokenLogo 
-                              token={poolData.token0} 
-                              size={14}
-                              className="flex-shrink-0 md:w-5 md:h-5"
-                            />
+                    {(() => {
+                      const isCollect = isCollectTransaction(tx);
+                      return (
+                        <div className="flex flex-col md:flex-col gap-0.5 md:gap-1 items-center md:items-start">
+                          {amount0Num !== 0 && (
+                            <div className="flex items-center gap-0.5 md:gap-2 min-w-0 justify-center md:justify-start">
+                              {poolData && (
+                                <TokenLogo 
+                                  token={poolData.token0} 
+                                  size={14}
+                                  className="flex-shrink-0 md:w-5 md:h-5"
+                                />
+                              )}
+                              <span className="truncate whitespace-nowrap text-xs">
+                                {amount0Formatted} {tx.token0Symbol}
+                              </span>
+                            </div>
                           )}
-                          <span className="truncate whitespace-nowrap text-xs">
-                            {amount0Formatted} {tx.token0Symbol}
-                          </span>
-                        </div>
-                      )}
-                      {amount1Num !== 0 && (
-                        <div className="flex items-center gap-0.5 md:gap-2 min-w-0 justify-center md:justify-start">
-                          {poolData && (
-                            <TokenLogo 
-                              token={poolData.token1} 
-                              size={14}
-                              className="flex-shrink-0 md:w-5 md:h-5"
-                            />
+                          {amount1Num !== 0 && (
+                            <div className="flex items-center gap-0.5 md:gap-2 min-w-0 justify-center md:justify-start">
+                              {poolData && (
+                                <TokenLogo 
+                                  token={poolData.token1} 
+                                  size={14}
+                                  className="flex-shrink-0 md:w-5 md:h-5"
+                                />
+                              )}
+                              <span className="truncate whitespace-nowrap text-xs">
+                                {amount1Formatted} {tx.token1Symbol}
+                              </span>
+                            </div>
                           )}
-                          <span className="truncate whitespace-nowrap text-xs">
-                            {amount1Formatted} {tx.token1Symbol}
-                          </span>
+                          {amount0Num === 0 && amount1Num === 0 && !isCollect && (
+                            <span className="text-gray-400 dark:text-gray-500 text-xs">—</span>
+                          )}
+                          {isCollect && (
+                            <span className="text-gray-500 dark:text-gray-400 text-xs italic">
+                              Click View to see details on Etherscan
+                            </span>
+                          )}
                         </div>
-                      )}
-                      {amount0Num === 0 && amount1Num === 0 && (
-                        <span className="text-gray-400 dark:text-gray-500 text-xs">—</span>
-                      )}
-                    </div>
+                      );
+                    })()}
                   </td>
                   <td className="py-2 md:py-3 px-1 md:px-5 text-center md:text-left">
                     {(() => {
+                      const isCollect = isCollectTransaction(tx);
                       const labelMobile = getTransactionTypeLabel(tx.type, tx, poolData, true);
                       const labelDesktop = getTransactionTypeLabel(tx.type, tx, poolData, false);
                       return (
                         <span
-                          className={`inline-flex items-center justify-center md:justify-start px-1 md:px-3 py-0.5 md:py-1.5 rounded text-xs md:text-sm font-medium whitespace-nowrap ${getTransactionTypeStyles(tx.type, labelDesktop)}`}
+                          className={`inline-flex items-center justify-center md:justify-start px-1 md:px-3 py-0.5 md:py-1.5 rounded text-xs md:text-sm font-medium whitespace-nowrap ${getTransactionTypeStyles(tx.type, labelDesktop, isCollect)}`}
                         >
                           <span className="md:hidden">{labelMobile}</span>
                           <span className="hidden md:inline">{labelDesktop}</span>
