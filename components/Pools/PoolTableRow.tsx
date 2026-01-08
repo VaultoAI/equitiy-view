@@ -50,7 +50,6 @@ export function PoolTableRow({ pool, chainId = 1 }: PoolTableRowProps) {
         </div>
       </td>
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.fees30d || 0)}</td>
-      <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume24h)}</td>
       <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume30d)}</td>
       <td className="px-4 py-3 text-sm">
         {pool.tvl < 100 ? (
@@ -59,6 +58,16 @@ export function PoolTableRow({ pool, chainId = 1 }: PoolTableRowProps) {
           <APRTooltip apr={formatPercent(pool.apr)} />
         )}
       </td>
+      {!isSolana && (
+        <td className="hidden md:table-cell px-4 py-3">
+          <Link
+            href={poolLink}
+            className="inline-flex items-center justify-center px-1 md:px-3 py-0.5 md:py-1.5 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            View
+          </Link>
+        </td>
+      )}
     </tr>
   );
 }
