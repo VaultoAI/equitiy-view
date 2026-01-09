@@ -37,6 +37,7 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
       return {
         tvl: 0,
         fees24h: 0,
+        volume24h: 0,
         fees30d: 0,
         volume30d: 0,
         apr: 0
@@ -45,6 +46,7 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
 
     let totalTvl = 0;
     let totalFees24h = 0;
+    let totalVolume24h = 0;
     let totalFees30d = 0;
     let totalVolume30d = 0;
     let weightedAprSum = 0;
@@ -52,6 +54,7 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
     sortedPools.forEach(pool => {
       totalTvl += pool.tvl || 0;
       totalFees24h += pool.fees24h || 0;
+      totalVolume24h += pool.volume24h || 0;
       totalFees30d += pool.fees30d || 0;
       totalVolume30d += pool.volume30d || 0;
       weightedAprSum += (pool.apr || 0) * (pool.tvl || 0);
@@ -62,6 +65,7 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
     return {
       tvl: totalTvl,
       fees24h: totalFees24h,
+      volume24h: totalVolume24h,
       fees30d: totalFees30d,
       volume30d: totalVolume30d,
       apr: avgApr
@@ -97,6 +101,9 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold">
                 <SortButton field={PoolSortFields.Fees24h}>Fees 24h</SortButton>
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">
+                <SortButton field={PoolSortFields.Volume24h}>Volume 24h</SortButton>
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold">
                 <SortButton field={PoolSortFields.Fees30d}>Fees 30d</SortButton>
@@ -135,7 +142,17 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
                 </td>
                 <td className="px-4 py-3">
                   <div className="animate-pulse">
+                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="animate-pulse">
                     <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-12"></div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="animate-pulse">
+                    <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-16"></div>
                   </div>
                 </td>
                 <td className="hidden md:table-cell px-4 py-3">
@@ -180,6 +197,9 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
               <SortButton field={PoolSortFields.Fees24h}>Fees 24h</SortButton>
             </th>
             <th className="px-4 py-3 text-left text-sm font-semibold">
+              <SortButton field={PoolSortFields.Volume24h}>Volume 24h</SortButton>
+            </th>
+            <th className="px-4 py-3 text-left text-sm font-semibold">
               <SortButton field={PoolSortFields.Fees30d}>Fees 30d</SortButton>
             </th>
             <th className="px-4 py-3 text-left text-sm font-semibold">
@@ -202,6 +222,7 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
               </td>
               <td className="px-4 py-3 text-sm">{formatCurrency(totals.tvl)}</td>
               <td className="px-4 py-3 text-sm">{formatCurrency(totals.fees24h)}</td>
+              <td className="px-4 py-3 text-sm">{formatCurrency(totals.volume24h)}</td>
               <td className="px-4 py-3 text-sm">{formatCurrency(totals.fees30d)}</td>
               <td className="px-4 py-3 text-sm">{formatCurrency(totals.volume30d)}</td>
               <td className="px-4 py-3 text-sm">
