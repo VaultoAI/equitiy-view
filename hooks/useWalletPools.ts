@@ -126,6 +126,7 @@ export function useWalletPools(sortState: PoolTableSortState = {
               tokenAddress: tokenAddress.toLowerCase(),
             },
             errorPolicy: 'all',
+            fetchPolicy: 'network-only',
           });
 
           if (errors && errors.length > 0) {

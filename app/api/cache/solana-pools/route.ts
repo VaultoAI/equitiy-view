@@ -27,7 +27,12 @@ export async function GET(request: NextRequest) {
         error: 'Failed to fetch Solana pools', 
         details: error instanceof Error ? error.message : 'Unknown error' 
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
     );
   }
 }

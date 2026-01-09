@@ -112,6 +112,7 @@ export function usePoolsFromTokenAddress({
             tokenAddress: normalizedTokenAddress,
           },
           errorPolicy: 'all',
+          fetchPolicy: 'network-only',
         });
 
         if (errors && errors.length > 0) {

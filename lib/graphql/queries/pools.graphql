@@ -26,6 +26,8 @@ query TopV3Pools($first: Int!, $tokenAddress: String!) {
     feeTier
     totalValueLockedUSD
     txCount
+    token0Price
+    token1Price
     poolDayData(
       orderBy: date
       orderDirection: desc
@@ -35,6 +37,10 @@ query TopV3Pools($first: Int!, $tokenAddress: String!) {
       volumeUSD
       feesUSD
       tvlUSD
+      open
+      high
+      low
+      close
     }
   }
 }

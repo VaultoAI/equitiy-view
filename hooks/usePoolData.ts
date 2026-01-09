@@ -95,6 +95,7 @@ export function usePoolData(poolIdOrAddress: string) {
           variables: {
             poolId: poolIdOrAddress,
           },
+          fetchPolicy: 'network-only',
         });
 
         return response || { pool: null };
@@ -104,7 +105,7 @@ export function usePoolData(poolIdOrAddress: string) {
       }
     },
     enabled: !!poolIdOrAddress,
-    staleTime: 30000,
+    staleTime: 0,
   });
 
   // Extract token info to check if it's a tokenized stock

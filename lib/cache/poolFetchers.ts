@@ -131,6 +131,8 @@ const TOP_V3_POOLS_QUERY = `
       feeTier
       totalValueLockedUSD
       txCount
+      token0Price
+      token1Price
       poolDayData(
         orderBy: date
         orderDirection: desc
@@ -140,6 +142,10 @@ const TOP_V3_POOLS_QUERY = `
         volumeUSD
         feesUSD
         tvlUSD
+        open
+        high
+        low
+        close
       }
     }
   }

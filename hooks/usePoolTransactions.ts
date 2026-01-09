@@ -245,6 +245,7 @@ export function usePoolTransactions(poolIdOrAddress: string, limit: number = 100
             poolId: normalizedPoolId,
             first: limit,
           },
+          fetchPolicy: 'network-only',
         });
 
         return transformTransactions(response);

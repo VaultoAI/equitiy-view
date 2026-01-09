@@ -70,12 +70,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    });
   } catch (error) {
     console.error('❌ [GraphQL Proxy] Error:', error);
     return NextResponse.json(
       { error: 'GraphQL request failed', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
     );
   }
 }
