@@ -9,14 +9,15 @@ export function useSolanaPools(sortState: PoolTableSortState = {
   sortBy: PoolSortFields.TVL,
   sortDirection: 'desc',
 }) {
-  // Fetch pools from cached API route
+  // Fetch pools from API route - always fetch fresh data
   const { data: allPoolsData, isLoading: poolsLoading, error: poolsError } = useQuery({
     queryKey: ['solanaPools'],
     queryFn: async () => {
-      console.log(`🏊 [Solana Pools] Fetching pools from cached API...`);
+      console.log(`🏊 [Solana Pools] Fetching pools from API...`);
 
       const response = await fetch('/api/cache/solana-pools', {
         method: 'GET',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -29,17 +30,13 @@ export function useSolanaPools(sortState: PoolTableSortState = {
       const data = await response.json();
       const pools: TablePool[] = data.pools || [];
       
-      if (data.cached) {
-        console.log(`✅ [Solana Pools] Using cached data (${pools.length} pools)`);
-      } else {
-        console.log(`✅ [Solana Pools] Fetched fresh data (${pools.length} pools)`);
-      }
+      console.log(`✅ [Solana Pools] Fetched fresh data (${pools.length} pools)`);
       
       return pools;
     },
-    staleTime: 60 * 60 * 1000, // Cache for 1 hour (matches server cache TTL)
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes to pick up cron job updates
-    refetchOnWindowFocus: true, // Refetch when user returns to the tab
+    staleTime: 0, // Always consider data stale - fetch fresh on every mount
+    gcTime: 0, // Don't cache in memory
+    refetchOnMount: 'always', // Always refetch when component mounts
   });
 
   const allPools = allPoolsData || [];

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { refreshAllCaches } from '@/lib/cache/refreshCache';
+import { fetchTokenizedStockPools, fetchSolanaPools } from '@/lib/cache/poolFetchers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Cron-triggered cache refresh endpoint
+ * Cron-triggered data fetch endpoint (caching disabled)
  * Protected with secret token to prevent unauthorized access
  * 
  * Usage:
@@ -34,7 +34,7 @@ async function handleRequest(request: NextRequest) {
     if (!expectedSecret) {
       console.error('❌ [Cron Refresh] CACHE_REFRESH_SECRET not configured');
       return NextResponse.json(
-        { error: 'Cache refresh not configured. CACHE_REFRESH_SECRET environment variable is required.' },
+        { error: 'Refresh not configured. CACHE_REFRESH_SECRET environment variable is required.' },
         { status: 500 }
       );
     }
@@ -64,20 +64,43 @@ async function handleRequest(request: NextRequest) {
       );
     }
 
-    console.log('🔄 [Cron Refresh] Starting cache refresh...');
+    console.log('🔄 [Cron Refresh] Fetching fresh pool data...');
 
-    // Call the refresh function directly (no HTTP overhead)
-    const result = await refreshAllCaches();
+    // Fetch fresh data (no caching)
+    const [tokenizedPools, solanaPools] = await Promise.all([
+      fetchTokenizedStockPools().catch((err) => {
+        console.error('❌ [Cron Refresh] Error fetching tokenized stock pools:', err);
+        return { error: err instanceof Error ? err.message : 'Unknown error' };
+      }),
+      fetchSolanaPools().catch((err) => {
+        console.error('❌ [Cron Refresh] Error fetching Solana pools:', err);
+        return { error: err instanceof Error ? err.message : 'Unknown error' };
+      }),
+    ]);
+
+    const tokenizedResult = Array.isArray(tokenizedPools)
+      ? { success: true, count: tokenizedPools.length }
+      : { success: false, error: (tokenizedPools as any).error || 'Unknown error' };
+
+    const solanaResult = Array.isArray(solanaPools)
+      ? { success: true, count: solanaPools.length }
+      : { success: false, error: (solanaPools as any).error || 'Unknown error' };
+
+    const result = {
+      tokenizedStockPools: tokenizedResult,
+      solanaPools: solanaResult,
+      timestamp: new Date().toISOString(),
+    };
     
-    console.log(`✅ [Cron Refresh] Cache refresh completed at ${result.timestamp}`);
-    console.log(`   - Tokenized Stock Pools: ${result.tokenizedStockPools.success ? 'Success' : 'Failed'} (${result.tokenizedStockPools.count || 0} pools)`);
-    console.log(`   - Solana Pools: ${result.solanaPools.success ? 'Success' : 'Failed'} (${result.solanaPools.count || 0} pools)`);
+    console.log(`✅ [Cron Refresh] Data fetch completed at ${result.timestamp}`);
+    console.log(`   - Tokenized Stock Pools: ${tokenizedResult.success ? 'Success' : 'Failed'} (${tokenizedResult.count || 0} pools)`);
+    console.log(`   - Solana Pools: ${solanaResult.success ? 'Success' : 'Failed'} (${solanaResult.count || 0} pools)`);
 
-    const allSuccess = result.tokenizedStockPools.success && result.solanaPools.success;
+    const allSuccess = tokenizedResult.success && solanaResult.success;
 
     return NextResponse.json({
       success: allSuccess,
-      message: allSuccess ? 'Cache refreshed successfully' : 'Cache refresh completed with some errors',
+      message: allSuccess ? 'Data fetched successfully' : 'Data fetch completed with some errors',
       ...result,
     }, {
       status: allSuccess ? 200 : 207 // 207 Multi-Status for partial success
@@ -87,7 +110,7 @@ async function handleRequest(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false,
-        error: 'Failed to refresh cache', 
+        error: 'Failed to fetch pool data', 
         details: error instanceof Error ? error.message : 'Unknown error' 
       },
       { status: 500 }

@@ -9,15 +9,13 @@ export function useTokenizedStockPools(sortState: PoolTableSortState = {
   sortBy: PoolSortFields.TVL,
   sortDirection: 'desc',
 }) {
-  // Fetch pools from API route, forcing fresh data for ETH page loads.
+  // Fetch pools from API route - always fetch fresh data
   const { data: allPoolsData, isLoading: poolsLoading, error: poolsError } = useQuery({
     queryKey: ['tokenizedStockPools'],
     queryFn: async () => {
-      console.log(`🏊 [Tokenized Stock Pools] Fetching pools from cached API...`);
+      console.log(`🏊 [Tokenized Stock Pools] Fetching pools from API...`);
 
-      // Cache-bust URL + explicit no-store to avoid any intermediary/browser caching.
-      const url = `/api/cache/tokenized-stock-pools?fresh=1&t=${Date.now()}`;
-      const response = await fetch(url, {
+      const response = await fetch('/api/cache/tokenized-stock-pools', {
         method: 'GET',
         cache: 'no-store',
         headers: {
@@ -32,18 +30,13 @@ export function useTokenizedStockPools(sortState: PoolTableSortState = {
       const data = await response.json();
       const pools: TablePool[] = data.pools || [];
       
-      if (data.cached) {
-        console.log(`✅ [Tokenized Stock Pools] Using cached data (${pools.length} pools)`);
-      } else {
-        console.log(`✅ [Tokenized Stock Pools] Fetched fresh data (${pools.length} pools)`);
-      }
+      console.log(`✅ [Tokenized Stock Pools] Fetched fresh data (${pools.length} pools)`);
       
       return pools;
     },
-    // Always refetch when the page/hook mounts so users don't see stale pools.
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 0, // Always consider data stale - fetch fresh on every mount
+    gcTime: 0, // Don't cache in memory
+    refetchOnMount: 'always', // Always refetch when component mounts
   });
 
   const allPools = allPoolsData || [];
