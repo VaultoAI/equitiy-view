@@ -8,6 +8,7 @@ import { PoolData, Token, TVLDataPoint } from '@/lib/pools/types';
 import { getTokenLogoUrl } from '@/lib/utils/tokenLogo';
 import { isTokenizedStock } from '@/lib/pools/tokenizedStocks';
 import { getStockTicker } from '@/lib/utils/stockTicker';
+import { calculate24hMetrics } from '@/lib/pools/utils';
 
 interface PoolDetailsResponse {
   pool: {
@@ -38,6 +39,11 @@ interface PoolDetailsResponse {
       high?: string;
       low?: string;
       close?: string;
+    }>;
+    poolHourData?: Array<{
+      periodStartUnix: number;
+      volumeUSD: string;
+      feesUSD: string;
     }>;
   };
 }
@@ -77,6 +83,15 @@ const POOL_DETAILS_QUERY = gql`
         low
         close
       }
+      poolHourData(
+        orderBy: periodStartUnix
+        orderDirection: desc
+        first: 49
+      ) {
+        periodStartUnix
+        volumeUSD
+        feesUSD
+      }
     }
   }
 `;
@@ -105,7 +120,9 @@ export function usePoolData(poolIdOrAddress: string) {
       }
     },
     enabled: !!poolIdOrAddress,
-    staleTime: 0,
+    staleTime: 0, // Always consider data stale - fetch fresh data
+    gcTime: 0, // Don't cache in memory
+    refetchOnMount: 'always', // Always refetch when component mounts
   });
 
   // Extract token info to check if it's a tokenized stock
@@ -199,26 +216,49 @@ export function usePoolData(poolIdOrAddress: string) {
     // poolDayData is ordered by date descending (most recent first)
     const dayData = pool.poolDayData || [];
     
-    // 24h volume: most recent day's volume (first item in array)
-    const volumeUSD24H = dayData.length > 0 
-      ? parseFloat(dayData[0].volumeUSD || '0')
-      : 0;
-    
-    // 24h fees: most recent day's fees (first item in array)
-    const feesUSD24H = dayData.length > 0
-      ? parseFloat(dayData[0].feesUSD || '0')
-      : 0;
+    // Calculate true rolling 24h volume and fees from hourly data if available
+    let volumeUSD24H: number;
+    let feesUSD24H: number;
+    let feesUSD24HDiff: number | undefined;
+    let calculationMethod: 'hourly' | 'daily';
+
+    if (pool.poolHourData && pool.poolHourData.length > 0) {
+      // Use hourly data for accurate rolling 24h calculation
+      const metrics = calculate24hMetrics(pool.poolHourData);
+      volumeUSD24H = metrics.volume24h;
+      feesUSD24H = metrics.fees24h;
+      feesUSD24HDiff = metrics.fees24hDiff;
+      calculationMethod = 'hourly';
+    } else {
+      // Fallback to daily data (current day)
+      volumeUSD24H = dayData.length > 0 
+        ? parseFloat(dayData[0].volumeUSD || '0')
+        : 0;
+      feesUSD24H = dayData.length > 0
+        ? parseFloat(dayData[0].feesUSD || '0')
+        : 0;
+      
+      // Calculate fees diff using daily data as fallback
+      if (dayData.length >= 2) {
+        const previousFees = parseFloat(dayData[1].feesUSD || '0');
+        const diff = feesUSD24H - previousFees;
+        if (!isNaN(diff) && isFinite(diff)) {
+          feesUSD24HDiff = diff;
+        }
+      }
+      
+      calculationMethod = 'daily';
+    }
     
     // Log for debugging
-    if (dayData.length > 0) {
-      console.log(`📊 [Pool Details ${pool.id}] 24h data from API:`, {
-        date: dayData[0].date,
-        volumeUSD: dayData[0].volumeUSD,
-        feesUSD: dayData[0].feesUSD,
-        parsedVolume24H: volumeUSD24H,
-        parsedFees24H: feesUSD24H,
-      });
-    }
+    console.log(`📊 [Pool Details ${pool.id}] 24h data calculation:`, {
+      method: calculationMethod,
+      volumeUSD24H,
+      feesUSD24H,
+      feesUSD24HDiff,
+      hourlyDataPoints: pool.poolHourData?.length || 0,
+      dailyDataPoints: dayData.length,
+    });
     
     // 30d volume: sum of last 30 days (or all available days if less than 30)
     const volumeUSD30D = dayData.reduce((sum, day) => {
@@ -246,24 +286,6 @@ export function usePoolData(poolIdOrAddress: string) {
       }
     }
 
-    // Calculate 24h fees difference (current day - previous day)
-    let feesUSD24HDiff: number | undefined;
-    if (dayData.length >= 2) {
-      const previousFees = parseFloat(dayData[1].feesUSD || '0');
-      const diff = feesUSD24H - previousFees;
-      // Only set if the difference is a valid number
-      if (!isNaN(diff) && isFinite(diff)) {
-        feesUSD24HDiff = diff;
-      }
-      
-      // Log for debugging
-      console.log(`📊 [Pool Details ${pool.id}] 24h fees change:`, {
-        currentFees: feesUSD24H,
-        previousFees,
-        diff: feesUSD24HDiff,
-        dayDataLength: dayData.length,
-      });
-    }
     
     // Log TVL change for debugging
     if (dayData.length >= 2) {

@@ -30,6 +30,82 @@ export function calculateApr({
   return (fees30d * 12 / tvl) * 100;
 }
 
+/**
+ * Calculates true rolling 24-hour fees and volume from hourly data
+ * Also calculates the previous 24h period for comparison
+ * @param hourlyData Array of hourly pool data with timestamps, volume, and fees (should include at least 48 hours)
+ * @returns Object with current and previous 24h metrics, plus the difference
+ */
+export function calculate24hMetrics(
+  hourlyData: Array<{
+    periodStartUnix: number;
+    volumeUSD: string;
+    feesUSD: string;
+  }>
+): { 
+  volume24h: number; 
+  fees24h: number;
+  volume24hPrevious?: number;
+  fees24hPrevious?: number;
+  fees24hDiff?: number;
+} {
+  if (!hourlyData || hourlyData.length === 0) {
+    return { volume24h: 0, fees24h: 0 };
+  }
+
+  // Calculate timestamps
+  const now = Math.floor(Date.now() / 1000);
+  const twentyFourHoursAgo = now - 24 * 60 * 60;
+  const fortyEightHoursAgo = now - 48 * 60 * 60;
+
+  // Filter hourly data for current 24h period (last 24 hours)
+  const currentPeriodData = hourlyData.filter(
+    (hour) => hour.periodStartUnix >= twentyFourHoursAgo
+  );
+
+  // Filter hourly data for previous 24h period (48h ago to 24h ago)
+  const previousPeriodData = hourlyData.filter(
+    (hour) => hour.periodStartUnix >= fortyEightHoursAgo && hour.periodStartUnix < twentyFourHoursAgo
+  );
+
+  // Sum volume and fees from current period
+  const volume24h = currentPeriodData.reduce(
+    (sum, hour) => sum + parseFloat(hour.volumeUSD || '0'),
+    0
+  );
+  const fees24h = currentPeriodData.reduce(
+    (sum, hour) => sum + parseFloat(hour.feesUSD || '0'),
+    0
+  );
+
+  // Calculate previous period metrics if we have enough data
+  let volume24hPrevious: number | undefined;
+  let fees24hPrevious: number | undefined;
+  let fees24hDiff: number | undefined;
+
+  if (previousPeriodData.length > 0) {
+    volume24hPrevious = previousPeriodData.reduce(
+      (sum, hour) => sum + parseFloat(hour.volumeUSD || '0'),
+      0
+    );
+    fees24hPrevious = previousPeriodData.reduce(
+      (sum, hour) => sum + parseFloat(hour.feesUSD || '0'),
+      0
+    );
+    
+    // Calculate the difference (current - previous)
+    fees24hDiff = fees24h - fees24hPrevious;
+  }
+
+  return { 
+    volume24h, 
+    fees24h,
+    volume24hPrevious,
+    fees24hPrevious,
+    fees24hDiff
+  };
+}
+
 export function sortPools(
   pools: TablePool[],
   sortState: PoolTableSortState

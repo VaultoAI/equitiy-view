@@ -32,6 +32,15 @@ query PoolDetails($poolId: ID!) {
       low
       close
     }
+    poolHourData(
+      orderBy: periodStartUnix
+      orderDirection: desc
+      first: 49
+    ) {
+      periodStartUnix
+      volumeUSD
+      feesUSD
+    }
   }
 }
 

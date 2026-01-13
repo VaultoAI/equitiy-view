@@ -1,5 +1,5 @@
 import { TablePool } from '@/lib/pools/types';
-import { calculateApr } from '@/lib/pools/utils';
+import { calculateApr, calculate24hMetrics } from '@/lib/pools/utils';
 import { getTokenLogoUrl } from '@/lib/utils/tokenLogo';
 import { getSolanaTokenLogoUrl, getSolanaTokenName, getTrackedSolanaTokenMints } from '@/lib/utils/solanaTokenLogo';
 
@@ -88,6 +88,11 @@ interface PoolResponse {
       feesUSD: string;
       tvlUSD: string;
     }>;
+    poolHourData?: Array<{
+      periodStartUnix: number;
+      volumeUSD: string;
+      feesUSD: string;
+    }>;
   }>;
 }
 
@@ -147,6 +152,15 @@ const TOP_V3_POOLS_QUERY = `
         low
         close
       }
+      poolHourData(
+        orderBy: periodStartUnix
+        orderDirection: desc
+        first: 49
+      ) {
+        periodStartUnix
+        volumeUSD
+        feesUSD
+      }
     }
   }
 `;
@@ -167,10 +181,19 @@ async function fetchWithTimeoutAndRetry(
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
-      const response = await fetch(url, {
+      // Ensure fetch doesn't cache responses - always fetch fresh data
+      const fetchOptions: RequestInit = {
         ...options,
         signal: controller.signal,
-      });
+        cache: 'no-store', // Always fetch fresh data, don't use cache
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          ...(options.headers || {}), // Merge user-provided headers
+        },
+      };
+
+      const response = await fetch(url, fetchOptions);
 
       clearTimeout(timeoutId);
       
@@ -424,15 +447,35 @@ export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
           // Calculate 24h and 30d volumes and fees from poolDayData
           const dayData = pool.poolDayData || [];
           
-          // 24h volume: most recent day's volume (first item in array)
-          const volume24h = dayData.length > 0 
-            ? parseFloat(dayData[0].volumeUSD || '0')
-            : 0;
-          
-          // 24h fees: most recent day's fees (first item in array)
-          const fees24h = dayData.length > 0
-            ? parseFloat(dayData[0].feesUSD || '0')
-            : 0;
+          // Calculate true rolling 24h volume and fees from hourly data if available
+          let volume24h: number;
+          let fees24h: number;
+          let fees24HDiff: number | undefined;
+
+          if (pool.poolHourData && pool.poolHourData.length > 0) {
+            // Use hourly data for accurate rolling 24h calculation
+            const metrics = calculate24hMetrics(pool.poolHourData);
+            volume24h = metrics.volume24h;
+            fees24h = metrics.fees24h;
+            fees24HDiff = metrics.fees24hDiff;
+          } else {
+            // Fallback to daily data (current day)
+            volume24h = dayData.length > 0 
+              ? parseFloat(dayData[0].volumeUSD || '0')
+              : 0;
+            fees24h = dayData.length > 0
+              ? parseFloat(dayData[0].feesUSD || '0')
+              : 0;
+            
+            // Calculate fees diff using daily data as fallback
+            if (dayData.length >= 2) {
+              const previousFees = parseFloat(dayData[1].feesUSD || '0');
+              const diff = fees24h - previousFees;
+              if (!isNaN(diff) && isFinite(diff)) {
+                fees24HDiff = diff;
+              }
+            }
+          }
           
           // 30d volume: sum of last 30 days
           const volume30d = dayData.reduce((sum, day) => {
@@ -456,17 +499,6 @@ export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
               if (Math.abs(change) > 0.001 && !isNaN(change) && isFinite(change)) {
                 tvl24HChange = change;
               }
-            }
-          }
-
-          // Calculate 24h fees difference (current day - previous day)
-          let fees24HDiff: number | undefined;
-          if (dayData.length >= 2) {
-            const previousFees = parseFloat(dayData[1].feesUSD || '0');
-            const diff = fees24h - previousFees;
-            // Only set if the difference is a valid number
-            if (!isNaN(diff) && isFinite(diff)) {
-              fees24HDiff = diff;
             }
           }
 
