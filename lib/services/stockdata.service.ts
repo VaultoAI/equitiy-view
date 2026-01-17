@@ -120,12 +120,30 @@ function transformApiResponse(symbol: string, apiData: StockDataApiResponse): St
  * Handles both client-side and server-side contexts
  */
 function getBaseUrl(): string {
-  // Server-side: use localhost
-  if (typeof window === 'undefined') {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-  }
   // Client-side: use relative URLs (empty string means current origin)
-  return '';
+  if (typeof window !== 'undefined') {
+    return '';
+  }
+  
+  // Server-side: determine the correct URL based on environment
+  // Check for Netlify environment
+  if (process.env.URL) {
+    // Netlify provides the URL environment variable
+    return process.env.URL;
+  }
+  
+  // Check for Vercel environment
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  
+  // Check for custom API URL
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  
+  // Default to localhost for local development
+  return 'http://localhost:3000';
 }
 
 /**
@@ -174,6 +192,88 @@ export async function fetchStockData(
     return transformedData;
   } catch (error) {
     console.error(`❌ [StockData Service] Error fetching data for ${symbol}:`, error);
+    
+    if (error instanceof Error) {
+      throw error;
+    }
+    
+    throw new Error(`Failed to fetch stock data for ${symbol}: Unknown error`);
+  }
+}
+
+/**
+ * Fetches stock data directly from StockData.org API
+ * This function is for server-side use only (requires API token)
+ * @param symbol - Stock ticker symbol
+ * @param startDate - Start date in YYYY-MM-DD format
+ * @param endDate - End date in YYYY-MM-DD format
+ * @returns Stock data response
+ */
+export async function fetchStockDataDirectly(
+  symbol: string,
+  startDate: string,
+  endDate: string
+): Promise<StockDataResponse> {
+  if (!symbol || typeof symbol !== 'string') {
+    throw new Error('Symbol is required and must be a string');
+  }
+
+  if (!startDate || !endDate) {
+    throw new Error('Start date and end date are required');
+  }
+
+  // Check for API token (server-side only)
+  const apiToken = process.env.STOCKDATA_ORG_API_TOKEN;
+  if (!apiToken) {
+    throw new Error('API token not configured');
+  }
+
+  try {
+    // Build API URL
+    const baseUrl = 'https://api.stockdata.org/v1/data/eod';
+    const params = new URLSearchParams({
+      api_token: apiToken,
+      symbols: symbol.toUpperCase(),
+      interval: 'day',
+      sort: 'asc',
+      date_from: startDate,
+      date_to: endDate,
+    });
+
+    const apiUrl = `${baseUrl}?${params.toString()}`;
+    
+    console.log(`📊 [StockData Service Direct] Fetching data for ${symbol} from ${startDate} to ${endDate}`);
+
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ [StockData Service Direct] API error: ${response.status} ${response.statusText}`, errorText);
+      
+      if (response.status === 404) {
+        throw new Error(`Invalid ticker or no data available: ${symbol}`);
+      } else if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again later.');
+      } else if (response.status === 401 || response.status === 403) {
+        throw new Error('API authentication failed. Please check your API token.');
+      }
+      
+      throw new Error(`Failed to fetch stock data: ${response.status} ${response.statusText}`);
+    }
+
+    const apiData: StockDataApiResponse = await response.json();
+
+    if (!apiData.data) {
+      throw new Error('Invalid API response: missing data field');
+    }
+
+    const transformedData = transformApiResponse(symbol.toUpperCase(), apiData);
+    
+    console.log(`✅ [StockData Service Direct] Successfully fetched ${transformedData.prices.length} price points for ${symbol}`);
+
+    return transformedData;
+  } catch (error) {
+    console.error(`❌ [StockData Service Direct] Error fetching data for ${symbol}:`, error);
     
     if (error instanceof Error) {
       throw error;

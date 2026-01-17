@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchStockDataByDateRange, fetchCurrentStockPrice } from '@/lib/services/stockdata.service';
+import { fetchStockDataDirectly } from '@/lib/services/stockdata.service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,22 +64,22 @@ export async function GET(request: NextRequest) {
       // Check if requesting today's price
       const todayStr = new Date().toISOString().split('T')[0];
       
+      // For both today and historical dates, fetch a range around the target date
+      // Add buffer days to handle weekends/holidays
+      const startDate = new Date(targetDate);
+      startDate.setDate(startDate.getDate() - 7); // 7 days before
+      const endDate = new Date(targetDate);
+      endDate.setDate(endDate.getDate() + 1); // 1 day after
+
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      const stockData = await fetchStockDataDirectly(ticker, startDateStr, endDateStr);
+
+      // If requesting today's price, use the most recent price
       if (dateStr === todayStr) {
-        // For today, fetch the most recent price
-        price = await fetchCurrentStockPrice(ticker);
+        price = stockData.currentPrice;
       } else {
-        // For historical dates, fetch a range around the target date
-        // Add buffer days to handle weekends/holidays
-        const startDate = new Date(targetDate);
-        startDate.setDate(startDate.getDate() - 7); // 7 days before
-        const endDate = new Date(targetDate);
-        endDate.setDate(endDate.getDate() + 1); // 1 day after
-
-        const startDateStr = startDate.toISOString().split('T')[0];
-        const endDateStr = endDate.toISOString().split('T')[0];
-
-        const stockData = await fetchStockDataByDateRange(ticker, startDateStr, endDateStr);
-
         // Find the price for the target date or closest date before it
         const targetTime = targetDate.getTime();
         let closestPrice: number | null = null;

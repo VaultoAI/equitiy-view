@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchStockDataByDateRange } from '@/lib/services/stockdata.service';
+import { fetchStockDataDirectly } from '@/lib/services/stockdata.service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -97,8 +97,8 @@ export async function GET(request: NextRequest) {
       const startDateStr = timestampToDateString(bufferStartDate);
       const endDateStr = timestampToDateString(bufferEndDate);
 
-      // Fetch data from StockData service
-      const stockData = await fetchStockDataByDateRange(ticker, startDateStr, endDateStr);
+      // Fetch data from StockData service directly
+      const stockData = await fetchStockDataDirectly(ticker, startDateStr, endDateStr);
 
       if (!stockData.prices || stockData.prices.length === 0) {
         console.warn(`⚠️ [Stock Price History API] No price data found for ${ticker}`);
