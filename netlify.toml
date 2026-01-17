@@ -11,6 +11,13 @@
   to = "/.netlify/functions/stockdata-org"
   status = 200
 
+# Disable Next.js Image Optimization API (not supported on static hosting)
+# Return 404 for image optimization requests to prevent 400 errors
+[[redirects]]
+  from = "/_next/image*"
+  to = "/404"
+  status = 404
+
 # Next.js specific redirects
 [[redirects]]
   from = "/*"

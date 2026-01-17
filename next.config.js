@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  
+  // Disable Image Optimization for Netlify static deployment
+  // This prevents 400 errors from /_next/image endpoint
+  images: {
+    unoptimized: true,
+  },
+  
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
