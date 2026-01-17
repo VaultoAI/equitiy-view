@@ -315,7 +315,7 @@ export function usePoolData(poolIdOrAddress: string) {
       .map((day) => {
         let price = 0;
         
-        // For tokenized stocks, use actual stock prices from yahoo-finance2
+        // For tokenized stocks, use actual stock prices from StockData.org API
         if (isTokenizedStockPool && stockPriceHistoryData) {
           // Normalize date to start of day for matching
           const normalizedDate = Math.floor(day.date / 86400) * 86400;

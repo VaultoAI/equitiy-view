@@ -1,0 +1,21 @@
+# Netlify Configuration
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Redirect API requests to Netlify Functions
+[[redirects]]
+  from = "/api/stockdata-org"
+  to = "/.netlify/functions/stockdata-org"
+  status = 200
+
+# Next.js specific redirects
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Environment variables (set these in Netlify UI)
+# STOCKDATA_ORG_API_TOKEN=your_api_token_here

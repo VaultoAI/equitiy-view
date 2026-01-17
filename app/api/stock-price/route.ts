@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import YahooFinance from 'yahoo-finance2';
+import { fetchStockDataByDateRange, fetchCurrentStockPrice } from '@/lib/services/stockdata.service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// Create yahoo-finance2 instance (suppress notices for cleaner logs)
-const yahooFinance = new YahooFinance({ 
-  suppressNotices: ['yahooSurvey', 'ripHistorical'] 
-});
 
 // Cache for stock prices (5 minute TTL)
 const priceCache = new Map<string, { price: number; timestamp: number }>();
@@ -16,6 +11,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 /**
  * GET /api/stock-price?ticker=AAPL&date=2024-01-15
  * Fetches stock price for a given ticker and date
+ * Now uses StockData.org API via serverless function proxy
  */
 export async function GET(request: NextRequest) {
   try {
@@ -44,102 +40,70 @@ export async function GET(request: NextRequest) {
       targetDate = new Date();
     }
 
+    // Format date as YYYY-MM-DD
+    const dateStr = targetDate.toISOString().split('T')[0];
+
     // Check cache first
-    const cacheKey = `${ticker}-${targetDate.toISOString().split('T')[0]}`;
+    const cacheKey = `${ticker}-${dateStr}`;
     const cached = priceCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      console.log(`📊 [Stock Price API] Cache hit for ${ticker} on ${targetDate.toISOString().split('T')[0]}`);
+      console.log(`📊 [Stock Price API] Cache hit for ${ticker} on ${dateStr}`);
       return NextResponse.json({ 
         ticker,
-        date: targetDate.toISOString().split('T')[0],
+        date: dateStr,
         price: cached.price,
         cached: true
       });
     }
 
-    console.log(`📊 [Stock Price API] Fetching price for ${ticker} on ${targetDate.toISOString().split('T')[0]}`);
+    console.log(`📊 [Stock Price API] Fetching price for ${ticker} on ${dateStr}`);
 
-    // Fetch price data for the date
-    const dateStr = targetDate.toISOString().split('T')[0];
-    const todayStr = new Date().toISOString().split('T')[0];
-    
     try {
       let price: number | null = null;
 
+      // Check if requesting today's price
+      const todayStr = new Date().toISOString().split('T')[0];
+      
       if (dateStr === todayStr) {
-        // Today's price - use current quote
-        const quote = await yahooFinance.quote(ticker);
-        price = quote.regularMarketPrice || null;
+        // For today, fetch the most recent price
+        price = await fetchCurrentStockPrice(ticker);
       } else {
-        // Historical price - use chart() API (historical() is deprecated)
-        // Convert date to Unix timestamp (seconds)
-        const targetTimestamp = Math.floor(targetDate.getTime() / 1000);
-        const endTimestamp = targetTimestamp + 86400; // Add 1 day to ensure we get the date
-        
-        // Use chart() API which is the recommended replacement for historical()
-        const chartData = await yahooFinance.chart(ticker, {
-          period1: targetTimestamp,
-          period2: endTimestamp,
-          interval: '1d', // Daily interval
-        });
+        // For historical dates, fetch a range around the target date
+        // Add buffer days to handle weekends/holidays
+        const startDate = new Date(targetDate);
+        startDate.setDate(startDate.getDate() - 7); // 7 days before
+        const endDate = new Date(targetDate);
+        endDate.setDate(endDate.getDate() + 1); // 1 day after
 
-        if (chartData && chartData.quotes && chartData.quotes.length > 0) {
-          // Find the quote for the exact date or closest date
-          const targetDateObj = new Date(targetDate);
-          targetDateObj.setHours(0, 0, 0, 0);
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+
+        const stockData = await fetchStockDataByDateRange(ticker, startDateStr, endDateStr);
+
+        // Find the price for the target date or closest date before it
+        const targetTime = targetDate.getTime();
+        let closestPrice: number | null = null;
+        let closestTimeDiff = Infinity;
+
+        for (const priceData of stockData.prices) {
+          const priceDate = new Date(priceData.date);
+          const timeDiff = Math.abs(targetTime - priceDate.getTime());
           
-          // Try to find exact date match first
-          let quote = chartData.quotes.find((q: any) => {
-            const quoteDate = new Date(q.date);
-            quoteDate.setHours(0, 0, 0, 0);
-            return quoteDate.getTime() === targetDateObj.getTime();
-          });
-
-          // If no exact match, get the closest date before or on target date
-          if (!quote) {
-            const validQuotes = chartData.quotes.filter((q: any) => {
-              const quoteDate = new Date(q.date);
-              return quoteDate.getTime() <= targetDate.getTime();
-            });
-            
-            if (validQuotes.length > 0) {
-              quote = validQuotes[validQuotes.length - 1];
-            } else {
-              // If all quotes are after target date, use the first one
-              quote = chartData.quotes[0];
-            }
-          }
-
-          if (quote) {
-            price = quote.close || null;
-          }
-        }
-
-        // Fallback: If no data for exact date, try a wider range (handles weekends/holidays)
-        if (price === null) {
-          const weekBefore = targetTimestamp - 7 * 86400; // 7 days before
-          const weekAfter = targetTimestamp + 86400; // 1 day after
-          
-          const fallbackChart = await yahooFinance.chart(ticker, {
-            period1: weekBefore,
-            period2: weekAfter,
-            interval: '1d',
-          });
-
-          if (fallbackChart && fallbackChart.quotes && fallbackChart.quotes.length > 0) {
-            // Get the most recent price before or on the target date
-            const validQuotes = fallbackChart.quotes.filter((q: any) => {
-              return new Date(q.date).getTime() <= targetDate.getTime();
-            });
-            
-            if (validQuotes.length > 0) {
-              price = validQuotes[validQuotes.length - 1].close || null;
-            } else {
-              // Use the oldest available price if all are after target date
-              price = fallbackChart.quotes[0].close || null;
+          // Prefer dates on or before the target date
+          if (priceDate.getTime() <= targetTime) {
+            if (timeDiff < closestTimeDiff) {
+              closestTimeDiff = timeDiff;
+              closestPrice = priceData.price;
             }
           }
         }
+
+        // If no date found before target, use the earliest available
+        if (closestPrice === null && stockData.prices.length > 0) {
+          closestPrice = stockData.prices[0].price;
+        }
+
+        price = closestPrice;
       }
 
       if (price === null) {
@@ -161,11 +125,10 @@ export async function GET(request: NextRequest) {
         price,
         cached: false
       });
-    } catch (yahooError: any) {
-      console.error(`❌ [Stock Price API] Yahoo Finance error for ${ticker}:`, yahooError.message);
+    } catch (serviceError: any) {
+      console.error(`❌ [Stock Price API] StockData service error for ${ticker}:`, serviceError.message);
       
-      // Handle specific error cases
-      const errorMessage = yahooError.message || yahooError.toString() || 'Unknown error';
+      const errorMessage = serviceError.message || serviceError.toString() || 'Unknown error';
       
       if (
         errorMessage.includes('Invalid ticker') || 
@@ -179,9 +142,17 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Handle rate limiting or network errors
       if (
         errorMessage.includes('rate limit') ||
+        errorMessage.includes('429')
+      ) {
+        return NextResponse.json(
+          { error: `Rate limit exceeded. Please try again later.` },
+          { status: 429 }
+        );
+      }
+
+      if (
         errorMessage.includes('timeout') ||
         errorMessage.includes('network')
       ) {
