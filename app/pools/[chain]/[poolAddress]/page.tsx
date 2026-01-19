@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { usePoolData } from '@/hooks/usePoolData';
+import { usePoolTransactions } from '@/hooks/usePoolTransactions';
 import { PoolDetailsHeader } from '@/components/Pools/PoolDetails/PoolDetailsHeader';
 import { PoolDetailsStats } from '@/components/Pools/PoolDetails/PoolDetailsStats';
 import { PoolDetailsStatsButtons } from '@/components/Pools/PoolDetails/PoolDetailsStatsButtons';
@@ -22,6 +23,9 @@ function PoolDetailsContent() {
   // Call hook unconditionally (required by React Hooks rules)
   // Pass empty string for Solana to prevent unnecessary fetching
   const ethereumPoolQuery = usePoolData(isSolana ? '' : poolAddress);
+  
+  // Fetch transactions to get the 24h count
+  const { txCount24H } = usePoolTransactions(isSolana ? '' : poolAddress, 100);
   
   const poolData = ethereumPoolQuery.data;
   const loading = ethereumPoolQuery.loading;
@@ -118,8 +122,8 @@ function PoolDetailsContent() {
         ) : (
           <div>
             <PoolDetailsHeader poolData={poolData} loading={loading} />
-            <PoolDetailsStats poolData={poolData} loading={loading} />
             <PoolDetailsStatsButtons poolData={poolData} loading={loading} />
+            <PoolDetailsStats poolData={poolData} loading={loading} txCount24H={txCount24H} />
             <TVLChart poolData={poolData} loading={loading} />
             <PoolTransactionsTable poolAddress={poolAddress} poolData={poolData} />
           </div>

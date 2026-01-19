@@ -119,7 +119,7 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
           </thead>
           <tbody>
             {[...Array(5)].map((_, index) => (
-              <tr key={index} className="border-b border-gray-700 dark:border-gray-600">
+              <tr key={index} className="border-b border-gray-200 dark:border-gray-600">
                 <td className="sticky left-0 z-10 bg-white dark:bg-gray-950 px-4 py-3">
                   <div className="animate-pulse">
                     <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>

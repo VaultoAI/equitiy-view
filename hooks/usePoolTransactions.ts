@@ -258,8 +258,22 @@ export function usePoolTransactions(poolIdOrAddress: string, limit: number = 100
     staleTime: 60000, // 1 minute
   });
 
+  // Calculate 24h transaction count (transactions that occurred today)
+  const txCount24H = (data || []).filter(tx => {
+    const txDate = new Date(tx.timestamp * 1000);
+    const today = new Date();
+    
+    // Check if the transaction date is the same as current date (same day, month, year)
+    return (
+      txDate.getFullYear() === today.getFullYear() &&
+      txDate.getMonth() === today.getMonth() &&
+      txDate.getDate() === today.getDate()
+    );
+  }).length;
+
   return {
     data: data || [],
+    txCount24H,
     loading: isLoading,
     error: error as Error | null,
   };

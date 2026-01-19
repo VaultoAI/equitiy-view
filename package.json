@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@apollo/client": "^3.8.10",
+    "@lifi/widget": "^3.40.2",
     "@rainbow-me/rainbowkit": "^2.0.0",
     "@tanstack/react-query": "^5.17.0",
     "@uniswap/sdk-core": "^4.0.7",

@@ -8,11 +8,11 @@ interface PoolDetailsStatsButtonsProps {
 }
 
 export function PoolDetailsStatsButtons({ poolData, loading }: PoolDetailsStatsButtonsProps) {
-  // Add Liquidity button removed - form is now directly on the pool detail page
   if (loading || !poolData) {
     return null;
   }
 
+  // Swap button has been moved to PoolDetailsHeader
   return null;
 }
 

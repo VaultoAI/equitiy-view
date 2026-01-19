@@ -1,7 +1,10 @@
 'use client';
 
+import { useRef } from 'react';
+import Image from 'next/image';
 import { PoolData } from '@/lib/pools/types';
 import { PoolDescription } from '../PoolDescription';
+import { SwapDrawer, SwapDrawerHandle } from '../SwapDrawer';
 
 interface PoolDetailsHeaderProps {
   poolData: PoolData;
@@ -9,6 +12,8 @@ interface PoolDetailsHeaderProps {
 }
 
 export function PoolDetailsHeader({ poolData, loading }: PoolDetailsHeaderProps) {
+  const swapDrawerRef = useRef<SwapDrawerHandle>(null);
+
   if (loading || !poolData) {
     return (
       <div className="mb-6">
@@ -20,11 +25,31 @@ export function PoolDetailsHeader({ poolData, loading }: PoolDetailsHeaderProps)
     );
   }
 
+  const handleSwapClick = () => {
+    swapDrawerRef.current?.toggleDrawer();
+  };
+
   const uniswapUrl = `https://app.uniswap.org/explore/pools/ethereum/${poolData.idOrAddress}`;
 
   return (
     <div className="mb-6">
-      <PoolDescription token0={poolData.token0} token1={poolData.token1} alwaysShowBoth={true} />
+      <div className="flex items-center gap-3">
+        <PoolDescription token0={poolData.token0} token1={poolData.token1} alwaysShowBoth={true} />
+        <button
+          onClick={handleSwapClick}
+          className="hidden md:flex px-2 py-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md items-center gap-1.5 text-white text-sm font-medium"
+          title="Swap tokens"
+        >
+          <Image 
+            src="/swap.png" 
+            alt="Swap" 
+            width={16} 
+            height={16}
+            className="w-4 h-4"
+          />
+          <span>Swap</span>
+        </button>
+      </div>
       <div className="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
         <span>{poolData.protocolVersion} • Fee: {poolData.feeTier ? `${poolData.feeTier.feeAmount / 10000}%` : 'N/A'}</span>
         <a 
@@ -49,6 +74,11 @@ export function PoolDetailsHeader({ poolData, loading }: PoolDetailsHeaderProps)
           </svg>
         </a>
       </div>
+      <SwapDrawer
+        ref={swapDrawerRef}
+        token0={poolData.token0}
+        token1={poolData.token1}
+      />
     </div>
   );
 }

@@ -7,13 +7,14 @@ import { calculateApr } from '@/lib/pools/utils';
 interface PoolDetailsStatsProps {
   poolData: PoolData;
   loading?: boolean;
+  txCount24H?: number;
 }
 
-export function PoolDetailsStats({ poolData, loading }: PoolDetailsStatsProps) {
+export function PoolDetailsStats({ poolData, loading, txCount24H }: PoolDetailsStatsProps) {
   if (loading || !poolData) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        {/* Mobile shows 4 stats (2x2); the 5th card is desktop-only */}
+        {/* Mobile shows 4 stats (2x2): TVL, Fees 24h, Volume 24h, APR */}
         {[...Array(4)].map((_, index) => (
           <div key={index} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
             <div className="animate-pulse">
@@ -22,6 +23,7 @@ export function PoolDetailsStats({ poolData, loading }: PoolDetailsStatsProps) {
             </div>
           </div>
         ))}
+        {/* Transactions - desktop only (5th column) */}
         <div className="hidden md:block bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
           <div className="animate-pulse">
             <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-16 mb-2"></div>
@@ -64,10 +66,6 @@ export function PoolDetailsStats({ poolData, loading }: PoolDetailsStatsProps) {
         </div>
       </div>
       <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
-        <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Volume 30d</div>
-        <div className="text-lg font-semibold">{formatCurrency(poolData.volumeUSD30D || 0)}</div>
-      </div>
-      <div className="hidden md:block bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Fees 24h</div>
         <div className="flex items-baseline gap-2">
           <div className="text-lg font-semibold">{formatCurrency(poolData.feesUSD24H || 0)}</div>
@@ -86,12 +84,23 @@ export function PoolDetailsStats({ poolData, loading }: PoolDetailsStatsProps) {
         </div>
       </div>
       <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Volume 24h</div>
+        <div className="text-lg font-semibold">{formatCurrency(poolData.volumeUSD24H || 0)}</div>
+      </div>
+      <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">APR</div>
         <div className="text-lg font-semibold">{formatPercent(apr)}</div>
       </div>
-      <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+      <div className="hidden md:block bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Transactions</div>
-        <div className="text-lg font-semibold">{poolData.txCount?.toLocaleString() || '0'}</div>
+        <div className="flex items-baseline gap-2">
+          <div className="text-lg font-semibold">{poolData.txCount?.toLocaleString() || '0'}</div>
+          {txCount24H !== undefined && txCount24H > 0 && (
+            <span className="text-xs text-green-600 dark:text-green-400">
+              +{txCount24H.toLocaleString()}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
