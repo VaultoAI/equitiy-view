@@ -14,7 +14,7 @@ export function PoolDetailsStats({ poolData, loading, txCount24H }: PoolDetailsS
   if (loading || !poolData) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        {/* Mobile shows 4 stats (2x2): TVL, Fees 24h, Volume 24h, APR */}
+        {/* Mobile shows 4 stats (2x2): TVL, Fees 24h, Volume 30d, APR */}
         {[...Array(4)].map((_, index) => (
           <div key={index} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
             <div className="animate-pulse">
@@ -84,8 +84,15 @@ export function PoolDetailsStats({ poolData, loading, txCount24H }: PoolDetailsS
         </div>
       </div>
       <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
-        <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Volume 24h</div>
-        <div className="text-lg font-semibold">{formatCurrency(poolData.volumeUSD24H || 0)}</div>
+        {/* Mobile: Show Volume 30d, Desktop: Show Volume 24h */}
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+          <span className="md:hidden">Volume 30d</span>
+          <span className="hidden md:inline">Volume 24h</span>
+        </div>
+        <div className="text-lg font-semibold">
+          <span className="md:hidden">{formatCurrency(poolData.volumeUSD30D || 0)}</span>
+          <span className="hidden md:inline">{formatCurrency(poolData.volumeUSD24H || 0)}</span>
+        </div>
       </div>
       <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">APR</div>
