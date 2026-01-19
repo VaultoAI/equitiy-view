@@ -25,6 +25,12 @@ export const SwapDrawer = forwardRef<SwapDrawerHandle, SwapDrawerProps>(
       },
     }));
 
+    // Ensure USDC is always the from token
+    const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+    const isToken0USDC = token0.address.toLowerCase() === USDC_ADDRESS.toLowerCase();
+    const fromToken = isToken0USDC ? token0 : token1;
+    const toToken = isToken0USDC ? token1 : token0;
+
     // Calculate $100 worth of the from token based on its decimals
     const defaultAmount = (100).toString();
 
@@ -36,8 +42,8 @@ export const SwapDrawer = forwardRef<SwapDrawerHandle, SwapDrawerProps>(
       },
       fromChain: 1, // Ethereum mainnet
       toChain: 1, // Ethereum mainnet
-      fromToken: token0.address,
-      toToken: token1.address,
+      fromToken: fromToken.address,
+      toToken: toToken.address,
       fromAmount: defaultAmount,
       theme: {
         container: {
