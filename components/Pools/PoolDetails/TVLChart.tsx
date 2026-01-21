@@ -41,7 +41,7 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
     tvl: true,
     volume: true,
     price: true,
-    volatility: true,
+    volatility: false,
   });
 
   useEffect(() => {

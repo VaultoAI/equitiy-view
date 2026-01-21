@@ -267,6 +267,15 @@ export async function fetchStockDataDirectly(
       throw new Error('Invalid API response: missing data field');
     }
 
+    // Log raw API data for debugging
+    console.log(`📊 [StockData Service Direct] Raw API returned ${apiData.data.length} data points`);
+    if (apiData.data.length > 0) {
+      const lastFive = apiData.data.slice(-5);
+      console.log(`📊 [StockData Service Direct] Last 5 data points:`, 
+        lastFive.map(d => ({ date: d.date, close: d.close }))
+      );
+    }
+
     const transformedData = transformApiResponse(symbol.toUpperCase(), apiData);
     
     console.log(`✅ [StockData Service Direct] Successfully fetched ${transformedData.prices.length} price points for ${symbol}`);

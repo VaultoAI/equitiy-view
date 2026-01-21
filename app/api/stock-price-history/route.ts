@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchStockDataDirectly } from '@/lib/services/stockdata.service';
+import { fetchDailyTimeSeries } from '@/lib/services/alphavantage.service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Cache for historical stock prices (5 minute TTL)
+// Cache for historical stock prices with dynamic TTL
 const historyCache = new Map<string, { data: Array<{ date: number; price: number }>; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const HISTORICAL_CACHE_TTL = 30 * 60 * 1000; // 30 minutes for older historical data
+const CURRENT_CACHE_TTL = 1 * 60 * 1000; // 1 minute for recent data
+const MAX_CACHE_SIZE = 500; // Maximum number of cache entries
+
+/**
+ * Determines if a date range includes recent dates (last 2 days)
+ */
+function includesRecentDates(endDate: number): boolean {
+  const now = Date.now();
+  const twoDaysAgo = now - (2 * 86400 * 1000); // 2 days in milliseconds
+  const endDateTime = endDate * 1000; // Convert from seconds to milliseconds
+  
+  return endDateTime >= twoDaysAgo;
+}
 
 /**
  * Normalizes a Unix timestamp to the start of the day (00:00:00 UTC)
@@ -72,11 +86,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check cache first
+    // Check cache first with dynamic TTL
     const cacheKey = `${ticker}-${startDate}-${endDate}`;
     const cached = historyCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      console.log(`📊 [Stock Price History API] Cache hit for ${ticker} from ${startDate} to ${endDate}`);
+    const cacheTTL = includesRecentDates(endDate) ? CURRENT_CACHE_TTL : HISTORICAL_CACHE_TTL;
+    
+    if (cached && Date.now() - cached.timestamp < cacheTTL) {
+      console.log(`📊 [Stock Price History API] Cache hit for ${ticker} from ${startDate} to ${endDate} (TTL: ${cacheTTL/1000}s)`);
       return NextResponse.json({
         ticker,
         startDate,
@@ -97,61 +113,91 @@ export async function GET(request: NextRequest) {
       const startDateStr = timestampToDateString(bufferStartDate);
       const endDateStr = timestampToDateString(bufferEndDate);
 
-      // Fetch data from StockData service directly
-      const stockData = await fetchStockDataDirectly(ticker, startDateStr, endDateStr);
+      // Try Alpha Vantage first (PRIMARY SOURCE)
+      let dataSource: 'alphavantage' | 'stockdata' = 'alphavantage';
+      const priceMap = new Map<number, number>();
 
-      if (!stockData.prices || stockData.prices.length === 0) {
-        console.warn(`⚠️ [Stock Price History API] No price data found for ${ticker}`);
-        return NextResponse.json(
-          { error: `No price data available for ${ticker} in the specified date range` },
-          { status: 404 }
-        );
+      console.log(`📊 [Stock Price History API] Using Alpha Vantage as primary source`);
+      
+      try {
+        // Use 'compact' output (last 100 days) - 'full' requires premium subscription
+        const avData = await fetchDailyTimeSeries(ticker, 'compact');
+        
+        if (avData && avData.length > 0) {
+          dataSource = 'alphavantage';
+          
+          // Convert Alpha Vantage data to price map
+          avData.forEach(dataPoint => {
+            const date = new Date(dataPoint.date);
+            const normalizedTimestamp = normalizeToStartOfDay(Math.floor(date.getTime() / 1000));
+            priceMap.set(normalizedTimestamp, dataPoint.close);
+          });
+          
+          console.log(`✅ [Stock Price History API] Alpha Vantage provided ${avData.length} data points`);
+          if (avData.length > 0) {
+            console.log(`📊 [Stock Price History API] Latest from Alpha Vantage: ${avData[0].date} at $${avData[0].close}`);
+            console.log(`📊 [Stock Price History API] Oldest from Alpha Vantage: ${avData[avData.length - 1].date}`);
+          }
+        }
+      } catch (avError: any) {
+        console.warn(`⚠️ [Stock Price History API] Alpha Vantage failed, falling back to StockData.org:`, avError.message);
       }
 
-      // Create a map of normalized dates to prices from the service response
-      const priceMap = new Map<number, number>();
-      stockData.prices.forEach(priceData => {
-        const priceDate = new Date(priceData.date);
-        const normalizedTimestamp = normalizeToStartOfDay(Math.floor(priceDate.getTime() / 1000));
-        priceMap.set(normalizedTimestamp, priceData.price);
-      });
+      // Use StockData.org only as fallback
+      if (priceMap.size === 0) {
+        console.log(`📊 [Stock Price History API] Using StockData.org`);
+        dataSource = 'stockdata';
+        
+        const stockData = await fetchStockDataDirectly(ticker, startDateStr, endDateStr);
+
+        if (!stockData.prices || stockData.prices.length === 0) {
+          console.warn(`⚠️ [Stock Price History API] No price data found for ${ticker}`);
+          return NextResponse.json(
+            { error: `No price data available for ${ticker} in the specified date range` },
+            { status: 404 }
+          );
+        }
+
+        // Create a map of normalized dates to prices from the service response
+        stockData.prices.forEach(priceData => {
+          const priceDate = new Date(priceData.date);
+          const normalizedTimestamp = normalizeToStartOfDay(Math.floor(priceDate.getTime() / 1000));
+          priceMap.set(normalizedTimestamp, priceData.price);
+        });
+      }
+      
+      // Alpha Vantage 'full' output provides 20+ years of data, so no need to supplement
+
+      console.log(`📊 [Stock Price History API] Created price map with ${priceMap.size} unique dates`);
+      const lastFiveDates = Array.from(priceMap.keys()).slice(-5).map(ts => ({
+        timestamp: ts,
+        date: new Date(ts * 1000).toISOString().split('T')[0],
+        price: priceMap.get(ts)
+      }));
+      console.log(`📊 [Stock Price History API] Price map dates:`, lastFiveDates);
 
       // Generate array of prices for each day in the requested range
-      // Match each pool data date to the closest trading day
+      // Fill in weekend/holiday gaps with last known price
       const prices: Array<{ date: number; price: number }> = [];
       const normalizedStartDate = normalizeToStartOfDay(startDate);
       const normalizedEndDate = normalizeToStartOfDay(endDate);
 
-      // Sort stock prices by date for finding closest trading days
-      const sortedPrices = [...stockData.prices].sort((a, b) => 
-        new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
+      // Get sorted list of available trading days
+      const tradingDays = Array.from(priceMap.keys()).sort((a, b) => a - b);
 
-      // For each day in the range, find the closest trading day price
+      // For each day in the range, find price (exact or last known)
       let currentDate = normalizedStartDate;
       while (currentDate <= normalizedEndDate) {
-        // Try to find exact match first
         let price: number | undefined = priceMap.get(currentDate);
         
-        // If no exact match, find closest trading day on or before the target date
+        // If no exact match, find the last trading day before this date
         if (price === undefined) {
-          const currentDateTime = currentDate * 1000; // Convert to milliseconds
-          let closestPrice: number | null = null;
-          
-          for (let i = sortedPrices.length - 1; i >= 0; i--) {
-            const priceDateTime = new Date(sortedPrices[i].date).getTime();
-            if (priceDateTime <= currentDateTime) {
-              closestPrice = sortedPrices[i].price;
+          for (let i = tradingDays.length - 1; i >= 0; i--) {
+            if (tradingDays[i] <= currentDate) {
+              price = priceMap.get(tradingDays[i]);
               break;
             }
           }
-          
-          // If no date found before current, use the first available price
-          if (closestPrice === null && sortedPrices.length > 0) {
-            closestPrice = sortedPrices[0].price;
-          }
-          
-          price = closestPrice !== null ? closestPrice : undefined;
         }
 
         if (price !== undefined && price > 0) {
@@ -173,17 +219,46 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Cache the result
+      // Cache the result with size management
+      if (historyCache.size >= MAX_CACHE_SIZE) {
+        // Remove oldest entries (first 20% of cache)
+        const entriesToRemove = Math.floor(MAX_CACHE_SIZE * 0.2);
+        const keys = Array.from(historyCache.keys());
+        for (let i = 0; i < entriesToRemove && i < keys.length; i++) {
+          historyCache.delete(keys[i]);
+        }
+      }
       historyCache.set(cacheKey, { data: prices, timestamp: Date.now() });
 
       console.log(`✅ [Stock Price History API] Found ${prices.length} price points for ${ticker}`);
+
+      // Find the last trading day from price map
+      const lastTradingDay = priceMap.size > 0 ? Math.max(...Array.from(priceMap.keys())) : 0;
+      const lastTradingDate = lastTradingDay > 0 ? new Date(lastTradingDay * 1000).toISOString().split('T')[0] : 'unknown';
+      
+      // Calculate data freshness
+      const now = Date.now();
+      const lastDataTimestamp = lastTradingDay * 1000;
+      const dataAgeHours = lastTradingDay > 0 ? Math.floor((now - lastDataTimestamp) / (1000 * 60 * 60)) : 999;
+      const isStale = dataAgeHours > 24;
 
       return NextResponse.json({
         ticker,
         startDate,
         endDate,
         prices,
-        cached: false
+        cached: false,
+        source: dataSource,
+        metadata: {
+          lastTradingDay: lastTradingDate,
+          dataAgeHours,
+          isStale,
+          note: dataSource === 'alphavantage' 
+            ? 'Real-time data from Alpha Vantage (15-min delay)'
+            : isStale 
+            ? 'EOD data updates once per trading day after market close' 
+            : 'Data is current'
+        }
       });
     } catch (serviceError: any) {
       console.error(`❌ [Stock Price History API] StockData service error for ${ticker}:`, serviceError.message);

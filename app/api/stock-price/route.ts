@@ -1,12 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchStockDataDirectly } from '@/lib/services/stockdata.service';
+import { fetchPriceForDate, shouldUseAlphaVantage } from '@/lib/services/alphavantage.service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Cache for stock prices (5 minute TTL)
+// Cache for stock prices with dynamic TTL
 const priceCache = new Map<string, { price: number; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const HISTORICAL_CACHE_TTL = 60 * 60 * 1000; // 1 hour for historical data
+const CURRENT_CACHE_TTL = 1 * 60 * 1000; // 1 minute for current/recent data
+const MAX_CACHE_SIZE = 1000; // Maximum number of cache entries
+
+/**
+ * Determines if a date is today or within the last 2 days (needs fresh data)
+ */
+function isRecentDate(dateStr: string): boolean {
+  const targetDate = new Date(dateStr);
+  const now = new Date();
+  const twoDaysAgo = new Date(now);
+  twoDaysAgo.setDate(now.getDate() - 2);
+  
+  // Reset time components for comparison
+  targetDate.setHours(0, 0, 0, 0);
+  twoDaysAgo.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+  
+  return targetDate >= twoDaysAgo;
+}
 
 /**
  * GET /api/stock-price?ticker=AAPL&date=2024-01-15
@@ -43,11 +63,13 @@ export async function GET(request: NextRequest) {
     // Format date as YYYY-MM-DD
     const dateStr = targetDate.toISOString().split('T')[0];
 
-    // Check cache first
+    // Check cache first with dynamic TTL
     const cacheKey = `${ticker}-${dateStr}`;
     const cached = priceCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      console.log(`📊 [Stock Price API] Cache hit for ${ticker} on ${dateStr}`);
+    const cacheTTL = isRecentDate(dateStr) ? CURRENT_CACHE_TTL : HISTORICAL_CACHE_TTL;
+    
+    if (cached && Date.now() - cached.timestamp < cacheTTL) {
+      console.log(`📊 [Stock Price API] Cache hit for ${ticker} on ${dateStr} (TTL: ${cacheTTL/1000}s)`);
       return NextResponse.json({ 
         ticker,
         date: dateStr,
@@ -60,50 +82,69 @@ export async function GET(request: NextRequest) {
 
     try {
       let price: number | null = null;
+      let dataSource: 'alphavantage' | 'stockdata' = 'alphavantage';
 
-      // Check if requesting today's price
-      const todayStr = new Date().toISOString().split('T')[0];
-      
-      // For both today and historical dates, fetch a range around the target date
-      // Add buffer days to handle weekends/holidays
-      const startDate = new Date(targetDate);
-      startDate.setDate(startDate.getDate() - 7); // 7 days before
-      const endDate = new Date(targetDate);
-      endDate.setDate(endDate.getDate() + 1); // 1 day after
+      // Try Alpha Vantage first (PRIMARY SOURCE)
+      console.log(`📊 [Stock Price API] Using Alpha Vantage as primary source for ${dateStr}`);
+      try {
+        const result = await fetchPriceForDate(ticker, dateStr);
+        price = result.price;
+        dataSource = 'alphavantage';
+        console.log(`✅ [Stock Price API] Alpha Vantage returned price: $${price} for ${result.date}`);
+      } catch (avError: any) {
+        console.warn(`⚠️ [Stock Price API] Alpha Vantage failed, falling back to StockData.org:`, avError.message);
+        // Fall through to StockData.org as backup
+      }
 
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = endDate.toISOString().split('T')[0];
+      // Use StockData.org only as fallback
+      if (price === null) {
+        console.log(`📊 [Stock Price API] Using StockData.org for ${dateStr}`);
+        dataSource = 'stockdata';
+        
+        // Check if requesting today's price
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        // For both today and historical dates, fetch a range around the target date
+        // Add buffer days to handle weekends/holidays
+        const startDate = new Date(targetDate);
+        startDate.setDate(startDate.getDate() - 7); // 7 days before
+        const endDate = new Date(targetDate);
+        endDate.setDate(endDate.getDate() + 1); // 1 day after
 
-      const stockData = await fetchStockDataDirectly(ticker, startDateStr, endDateStr);
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
 
-      // If requesting today's price, use the most recent price
-      if (dateStr === todayStr) {
-        price = stockData.currentPrice;
-      } else {
-        // Find the price for the target date or closest date before it
-        const targetTime = targetDate.getTime();
-        let closestPrice: number | null = null;
-        let closestTimeDiff = Infinity;
+        const stockData = await fetchStockDataDirectly(ticker, startDateStr, endDateStr);
 
-        for (const priceData of stockData.prices) {
-          const priceDate = new Date(priceData.date);
-          const timeDiff = Math.abs(targetTime - priceDate.getTime());
-          
-          // Prefer dates on or before the target date
-          if (priceDate.getTime() <= targetTime) {
-            if (timeDiff < closestTimeDiff) {
-              closestTimeDiff = timeDiff;
-              closestPrice = priceData.price;
+        // If requesting today's price, use the most recent price
+        if (dateStr === todayStr) {
+          price = stockData.currentPrice;
+        } else {
+          // Find the price for the target date or closest date before it
+          const targetTime = targetDate.getTime();
+          let closestPrice: number | null = null;
+          let closestTimeDiff = Infinity;
+
+          for (const priceData of stockData.prices) {
+            const priceDate = new Date(priceData.date);
+            const timeDiff = Math.abs(targetTime - priceDate.getTime());
+            
+            // Prefer dates on or before the target date
+            if (priceDate.getTime() <= targetTime) {
+              if (timeDiff < closestTimeDiff) {
+                closestTimeDiff = timeDiff;
+                closestPrice = priceData.price;
+              }
             }
           }
-        }
 
-        // If no date found before target, use the earliest available
-        if (closestPrice === null && stockData.prices.length > 0) {
-          closestPrice = stockData.prices[0].price;
-        }
+          // If no date found before target, use the earliest available
+          if (closestPrice === null && stockData.prices.length > 0) {
+            closestPrice = stockData.prices[0].price;
+          }
 
-        price = closestPrice;
+          price = closestPrice;
+        }
       }
 
       if (price === null) {
@@ -114,16 +155,25 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Cache the result
+      // Cache the result with size management
+      if (priceCache.size >= MAX_CACHE_SIZE) {
+        // Remove oldest entries (first 20% of cache)
+        const entriesToRemove = Math.floor(MAX_CACHE_SIZE * 0.2);
+        const keys = Array.from(priceCache.keys());
+        for (let i = 0; i < entriesToRemove && i < keys.length; i++) {
+          priceCache.delete(keys[i]);
+        }
+      }
       priceCache.set(cacheKey, { price, timestamp: Date.now() });
 
-      console.log(`✅ [Stock Price API] Found price for ${ticker}: $${price} on ${dateStr}`);
+      console.log(`✅ [Stock Price API] Found price for ${ticker}: $${price} on ${dateStr} (source: ${dataSource})`);
 
       return NextResponse.json({
         ticker,
         date: dateStr,
         price,
-        cached: false
+        cached: false,
+        source: dataSource
       });
     } catch (serviceError: any) {
       console.error(`❌ [Stock Price API] StockData service error for ${ticker}:`, serviceError.message);

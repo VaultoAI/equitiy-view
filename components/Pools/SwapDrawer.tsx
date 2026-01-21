@@ -36,6 +36,7 @@ export const SwapDrawer = forwardRef<SwapDrawerHandle, SwapDrawerProps>(
 
     const config: Partial<WidgetConfig> = {
       variant: 'drawer',
+      appearance: 'dark',
       subvariant: 'split',
       subvariantOptions: {
         split: 'swap',
@@ -46,6 +47,40 @@ export const SwapDrawer = forwardRef<SwapDrawerHandle, SwapDrawerProps>(
       toToken: toToken.address,
       fromAmount: defaultAmount,
       theme: {
+        colorSchemes: {
+          light: {
+            palette: {
+              primary: {
+                main: '#5C67FF',
+              },
+              secondary: {
+                main: '#F7C2FF',
+              },
+            },
+          },
+          dark: {
+            palette: {
+              primary: {
+                main: '#3b83f6',
+              },
+              secondary: {
+                main: '#F7C2FF',
+              },
+              background: {
+                default: '#0a0a0a',
+                paper: '#101827',
+              },
+              grey: {
+                300: '#101827',
+                700: '#101827',
+                800: '#101827',
+              },
+            },
+          },
+        },
+        typography: {
+          fontFamily: 'Inter, sans-serif',
+        },
         container: {
           boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.08)',
           borderRadius: '16px',
