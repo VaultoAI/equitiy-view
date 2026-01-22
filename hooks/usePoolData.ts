@@ -6,8 +6,6 @@ import { gql } from '@apollo/client';
 import { apolloClient } from '@/lib/graphql/client';
 import { PoolData, Token, TVLDataPoint } from '@/lib/pools/types';
 import { getTokenLogoUrl } from '@/lib/utils/tokenLogo';
-import { isTokenizedStock } from '@/lib/pools/tokenizedStocks';
-import { getStockTicker } from '@/lib/utils/stockTicker';
 import { calculate24hMetrics } from '@/lib/pools/utils';
 
 interface PoolDetailsResponse {
@@ -35,6 +33,8 @@ interface PoolDetailsResponse {
       volumeUSD: string;
       feesUSD: string;
       tvlUSD: string;
+      token0Price?: string;
+      token1Price?: string;
       open?: string;
       high?: string;
       low?: string;
@@ -78,6 +78,8 @@ const POOL_DETAILS_QUERY = gql`
         volumeUSD
         feesUSD
         tvlUSD
+        token0Price
+        token1Price
         open
         high
         low
@@ -125,83 +127,7 @@ export function usePoolData(poolIdOrAddress: string) {
     refetchOnMount: 'always', // Always refetch when component mounts
   });
 
-  // Extract token info to check if it's a tokenized stock
-  const token0Address = data?.pool ? data.pool.token0.id.split('-')[0] : null;
-  const token1Address = data?.pool ? data.pool.token1.id.split('-')[0] : null;
-  const token0Symbol = data?.pool?.token0.symbol || '';
-  const token1Symbol = data?.pool?.token1.symbol || '';
-
-  // Check if either token is a tokenized stock
-  const isToken0Stock = token0Address ? isTokenizedStock(token0Address) : false;
-  const isToken1Stock = token1Address ? isTokenizedStock(token1Address) : false;
-  const isTokenizedStockPool = isToken0Stock || isToken1Stock;
-
-  // Determine which token is the stock and get its ticker
-  const stockToken = isToken0Stock 
-    ? { symbol: token0Symbol, address: token0Address }
-    : isToken1Stock 
-    ? { symbol: token1Symbol, address: token1Address }
-    : null;
-
-  const stockTicker = stockToken ? getStockTicker(stockToken.symbol, stockToken.address || undefined) : null;
-
-  // Extract date range from poolDayData for historical stock price fetch
-  const dateRange = useMemo(() => {
-    const dayData = data?.pool?.poolDayData || [];
-    if (dayData.length === 0) return null;
-    
-    // poolDayData is ordered by date descending (most recent first)
-    // Find oldest and newest dates
-    const dates = dayData.map(day => day.date);
-    const oldestDate = Math.min(...dates);
-    const newestDate = Math.max(...dates);
-    
-    return { startDate: oldestDate, endDate: newestDate };
-  }, [data?.pool?.poolDayData]);
-
-  // Fetch historical stock prices for the date range if this is a tokenized stock pool
-  const { data: stockPriceHistoryData, error: stockPriceHistoryError } = useQuery({
-    queryKey: ['stockPriceHistory', stockTicker, dateRange?.startDate, dateRange?.endDate],
-    queryFn: async () => {
-      if (!stockTicker || !dateRange) return null;
-
-      try {
-        const response = await fetch(
-          `/api/stock-price-history?ticker=${stockTicker}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`
-        );
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.warn(`⚠️ [Pool Data] Failed to fetch stock price history for ${stockTicker}: ${response.status} ${response.statusText}`, errorData);
-          return null;
-        }
-
-        const data = await response.json();
-        
-        if (!data.prices || !Array.isArray(data.prices) || data.prices.length === 0) {
-          console.warn(`⚠️ [Pool Data] Invalid price history data for ${stockTicker}:`, data);
-          return null;
-        }
-        
-        // Create a map of date (normalized to start of day) -> price for quick lookup
-        const priceMap = new Map<number, number>();
-        data.prices.forEach((item: { date: number; price: number }) => {
-          // Normalize date to start of day for matching
-          const normalizedDate = Math.floor(item.date / 86400) * 86400; // Round to start of day
-          priceMap.set(normalizedDate, item.price);
-        });
-        
-        return priceMap;
-      } catch (err) {
-        console.error(`❌ [Pool Data] Error fetching stock price history for ${stockTicker}:`, err);
-        return null;
-      }
-    },
-    enabled: !!stockTicker && isTokenizedStockPool && !!dateRange,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2, // Retry up to 2 times on failure
-    retryDelay: 1000, // Wait 1 second between retries
-  });
+  // No longer fetching external stock price data - using pool data instead
 
   // Memoize poolData - must be called before any early returns to follow Rules of Hooks
   const poolData = useMemo<PoolData | undefined>(() => {
@@ -306,8 +232,17 @@ export function usePoolData(poolIdOrAddress: string) {
       });
     }
 
-    // Get current pool price for fallback if historical prices aren't available
-    const currentToken0Price = pool.token0Price ? parseFloat(pool.token0Price) : null;
+    // Determine which token is USDC (or a stablecoin) to calculate price correctly
+    // USDC addresses: 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 (Ethereum mainnet)
+    const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+    const USDT_ADDRESS = '0xdac17f958d2ee523a2206206994597c13d831ec7';
+    const DAI_ADDRESS = '0x6b175474e89094c44da98b954eedeac495271d0f';
+    
+    const poolToken0Address = pool.token0.id.split('-')[0].toLowerCase();
+    const poolToken1Address = pool.token1.id.split('-')[0].toLowerCase();
+    
+    const isToken0Stablecoin = [USDC_ADDRESS, USDT_ADDRESS, DAI_ADDRESS].includes(poolToken0Address);
+    const isToken1Stablecoin = [USDC_ADDRESS, USDT_ADDRESS, DAI_ADDRESS].includes(poolToken1Address);
     
     // Extract TVL time-series data (reverse to get chronological order: oldest to newest)
     const tvlHistory: TVLDataPoint[] = [...dayData]
@@ -315,46 +250,32 @@ export function usePoolData(poolIdOrAddress: string) {
       .map((day) => {
         let price = 0;
         
-        // For tokenized stocks, use actual stock prices from StockData.org API
-        if (isTokenizedStockPool && stockPriceHistoryData) {
-          // Normalize date to start of day for matching
-          const normalizedDate = Math.floor(day.date / 86400) * 86400;
-          const stockPrice = stockPriceHistoryData.get(normalizedDate);
+        // Calculate price from pool data
+        // token0Price = price of token0 in terms of token1
+        // token1Price = price of token1 in terms of token0
+        // We want the price of the non-stablecoin token in USD
+        
+        if (day.token0Price && day.token1Price) {
+          const token0Price = parseFloat(day.token0Price);
+          const token1Price = parseFloat(day.token1Price);
           
-          if (stockPrice !== undefined && stockPrice !== null && stockPrice > 0) {
-            price = stockPrice;
-          } else {
-            // If no exact match, try to find closest date (for weekends/holidays)
-            // Find the closest date in the price map
-            let closestPrice: number | null = null;
-            let minDiff = Infinity;
-            
-            stockPriceHistoryData.forEach((p, date) => {
-              const diff = Math.abs(date - normalizedDate);
-              if (diff < minDiff && date <= normalizedDate) {
-                minDiff = diff;
-                closestPrice = p;
-              }
-            });
-            
-            if (closestPrice !== null && closestPrice > 0) {
-              price = closestPrice;
-            } else {
-              // Fallback to poolDayData.close if stock price not available
-              if (day.close) {
-                price = parseFloat(day.close);
-              } else if (currentToken0Price !== null) {
-                price = currentToken0Price;
-              }
-            }
+          if (isToken1Stablecoin && token1Price > 0) {
+            // If token1 is USDC, then token1Price gives us token1 in terms of token0
+            // So 1/token1Price gives us token0 in terms of token1 (USDC)
+            price = 1 / token1Price;
+          } else if (isToken0Stablecoin && token0Price > 0) {
+            // If token0 is USDC, then token0Price gives us token0 in terms of token1
+            // So token0Price gives us the price of token1 in USDC
+            price = token0Price;
+          } else if (token0Price > 0) {
+            // Neither is a stablecoin, use token0Price as the price
+            price = token0Price;
           }
-        } else {
-          // For non-tokenized stocks, use poolDayData.close prices (existing behavior)
-          if (day.close) {
-            price = parseFloat(day.close);
-          } else if (currentToken0Price !== null) {
-            price = currentToken0Price;
-          }
+        }
+        
+        // Fallback to close price if token prices not available
+        if (price === 0 && day.close) {
+          price = parseFloat(day.close);
         }
         
         return {
@@ -365,11 +286,6 @@ export function usePoolData(poolIdOrAddress: string) {
         };
       })
       .filter((point) => point.tvlUSD > 0); // Filter out zero TVL values
-    
-    // Log if stock price history fetch failed
-    if (isTokenizedStockPool && stockPriceHistoryError) {
-      console.warn(`⚠️ [Pool Data] Stock price history fetch failed for ${stockTicker}, using poolDayData.close prices`);
-    }
 
     // Memoize token objects to prevent new references on every render
     const token0Address = pool.token0.id.split('-')[0];
@@ -429,9 +345,7 @@ export function usePoolData(poolIdOrAddress: string) {
     data?.pool?.totalValueLockedUSD,
     data?.pool?.txCount,
     data?.pool?.poolDayData,
-    stockPriceHistoryData,
-    isTokenizedStockPool,
-    stockTicker,
+    data?.pool?.poolHourData,
   ]);
 
   if (!poolData) {
