@@ -101,3 +101,32 @@ export interface PoolTransaction {
   token1Decimals: number;
 }
 
+// Liquidity chart types
+export interface PoolTick {
+  tickIdx: number;
+  liquidityGross: string;
+  liquidityNet: string;
+  price0: string;
+  price1: string;
+}
+
+export interface TickProcessed {
+  tick: number;
+  liquidityActive: string; // Using string instead of JSBI for serialization
+  liquidityNet: string;
+  price0: string;
+}export interface LiquidityChartEntry {
+  activeLiquidity: number;
+  price0: number;
+  tick: number;
+  amount0Locked: number;
+  amount1Locked: number;
+}
+
+export interface PoolTicksData {
+  tick: number;
+  liquidity: string;
+  sqrtPrice: string;
+  feeTier: number;
+  ticks: PoolTick[];
+}

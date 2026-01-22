@@ -1,0 +1,16 @@
+query PoolTicks($poolId: ID!, $skip: Int!) {
+  pool(id: $poolId) {
+    id
+    tick
+    liquidity
+    sqrtPrice
+    feeTier
+    ticks(skip: $skip, first: 1000) {
+      tickIdx
+      liquidityGross
+      liquidityNet
+      price0
+      price1
+    }
+  }
+}

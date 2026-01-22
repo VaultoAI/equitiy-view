@@ -260,12 +260,10 @@ export function usePoolData(poolIdOrAddress: string) {
           const token1Price = parseFloat(day.token1Price);
           
           if (isToken1Stablecoin && token1Price > 0) {
-            // If token1 is USDC, then token1Price gives us token1 in terms of token0
-            // So 1/token1Price gives us token0 in terms of token1 (USDC)
-            price = 1 / token1Price;
+            // If token1 is USDC, use token1Price to get USDC per asset
+            price = token1Price;
           } else if (isToken0Stablecoin && token0Price > 0) {
-            // If token0 is USDC, then token0Price gives us token0 in terms of token1
-            // So token0Price gives us the price of token1 in USDC
+            // If token0 is USDC, use token0Price to get USDC per asset
             price = token0Price;
           } else if (token0Price > 0) {
             // Neither is a stablecoin, use token0Price as the price

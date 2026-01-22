@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import {
   ComposedChart,
   Area,
@@ -19,6 +19,8 @@ import { formatCurrency } from '@/lib/utils/formatting';
 interface TVLChartProps {
   poolData: PoolData;
   loading?: boolean;
+  onPriceDomainChange?: (domain: [number, number]) => void;
+  onChartHeightChange?: (height: number) => void;
 }
 
 interface ChartDataPoint {
@@ -33,7 +35,7 @@ interface ChartDataPoint {
 
 type VolatilityPeriod = '1d' | '3d' | '7d';
 
-export function TVLChart({ poolData, loading }: TVLChartProps) {
+export function TVLChart({ poolData, loading, onPriceDomainChange, onChartHeightChange }: TVLChartProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [volatilityPeriod, setVolatilityPeriod] = useState<VolatilityPeriod>('1d');
@@ -43,6 +45,34 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
     price: true,
     volatility: false,
   });
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+
+  // Determine which token's price is being displayed
+  const priceLabel = useMemo(() => {
+    if (!poolData) return 'Price';
+    
+    // Check if either token is a stablecoin (USDC, USDT, DAI)
+    const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+    const USDT_ADDRESS = '0xdac17f958d2ee523a2206206994597c13d831ec7';
+    const DAI_ADDRESS = '0x6b175474e89094c44da98b954eedeac495271d0f';
+    
+    const token0Address = poolData.token0.address.toLowerCase();
+    const token1Address = poolData.token1.address.toLowerCase();
+    
+    const isToken0Stablecoin = [USDC_ADDRESS, USDT_ADDRESS, DAI_ADDRESS].includes(token0Address);
+    const isToken1Stablecoin = [USDC_ADDRESS, USDT_ADDRESS, DAI_ADDRESS].includes(token1Address);
+    
+    if (isToken1Stablecoin) {
+      // Showing price of token0 in terms of token1 (stablecoin)
+      return `${poolData.token0.symbol} Price`;
+    } else if (isToken0Stablecoin) {
+      // Showing price of token1 in terms of token0 (stablecoin)
+      return `${poolData.token1.symbol} Price`;
+    } else {
+      // Neither is a stablecoin, show token0 price
+      return `${poolData.token0.symbol} Price`;
+    }
+  }, [poolData]);
 
   // Determine which token's price is being displayed
   const priceLabel = useMemo(() => {
@@ -113,6 +143,25 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
       window.removeEventListener('resize', checkMobile);
     };
   }, []);
+
+  // Report chart height to parent
+  useEffect(() => {
+    if (onChartHeightChange && chartContainerRef.current) {
+      const resizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+          if (entry.target === chartContainerRef.current) {
+            onChartHeightChange(entry.contentRect.height);
+          }
+        }
+      });
+
+      resizeObserver.observe(chartContainerRef.current);
+
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  }, [onChartHeightChange]);
 
   const baseChartData = useMemo<ChartDataPoint[]>(() => {
     if (!poolData?.tvlHistory || poolData.tvlHistory.length === 0) {
@@ -252,8 +301,13 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
     const domainMin = Math.max(0, min - padding);
     const domainMax = max + padding;
     
+    // Notify parent of price domain change
+    if (onPriceDomainChange && typeof domainMin === 'number' && typeof domainMax === 'number') {
+      onPriceDomainChange([domainMin, domainMax]);
+    }
+    
     return [domainMin, domainMax];
-  }, [baseChartData]);
+  }, [baseChartData, onPriceDomainChange]);
 
   // Normalize volatility values to match volume graph maximum height
   const normalizedVolatility = useMemo(() => {
@@ -570,7 +624,7 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
   };
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 px-2 py-3 md:p-6 rounded-lg mb-6">
+    <div className="bg-gray-50 dark:bg-gray-900 px-2 py-3 md:p-6 rounded-lg">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Pool Metrics & {priceLabel}
@@ -590,7 +644,7 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
           </select>
         </div>
       </div>
-      <div className="w-full" style={{ height: '300px' }}>
+      <div ref={chartContainerRef} className="w-full" style={{ height: '300px' }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={chartData}
@@ -627,6 +681,7 @@ export function TVLChart({ poolData, loading }: TVLChartProps) {
               style={{ fontSize: '12px' }}
               tick={{ fill: isDarkMode ? '#d1d5db' : '#4b5563' }}
               ticks={xAxisTicks}
+              interval={1}
             />
             <YAxis
               yAxisId="left"
