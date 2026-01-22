@@ -208,7 +208,7 @@ export function HorizontalLiquidityChart({
           <BarChart
             data={chartData}
             layout="vertical"
-            margin={{ top: 10, right: -35, left: -10, bottom: 15 }}
+            margin={{ top: 10, right: -30, left: -10, bottom: 15 }}
             barSize={16}
           >
             <CartesianGrid
