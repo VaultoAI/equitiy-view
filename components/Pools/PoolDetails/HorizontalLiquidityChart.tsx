@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -24,6 +24,7 @@ interface HorizontalLiquidityChartProps {
   tvlUSD?: string;
   priceDomain?: [number, number];
   chartHeight?: number;
+  loading?: boolean;
 }
 
 export function HorizontalLiquidityChart({
@@ -35,7 +36,26 @@ export function HorizontalLiquidityChart({
   tvlUSD,
   priceDomain,
   chartHeight = 300,
+  loading,
 }: HorizontalLiquidityChartProps) {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    
+    checkDarkMode();
+    
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    
+    return () => observer.disconnect();
+  }, []);
+
   // Calculate total liquidity
   const totalLiquidity = useMemo(() => {
     return bands.reduce((sum, band) => {
@@ -125,6 +145,18 @@ export function HorizontalLiquidityChart({
     return finalData;
   }, [bands, currentTick, scalingFactor, priceDomain]);
 
+  // Handle loading state after all hooks
+  if (loading) {
+    return (
+      <div className="bg-gray-50 dark:bg-gray-900 rounded-lg px-2 py-3 md:p-6">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-48 mb-4"></div>
+          <div className="bg-gray-300 dark:bg-gray-700 rounded" style={{ height: `${chartHeight + 7}px` }}></div>
+        </div>
+      </div>
+    );
+  }
+
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload[0]) {
@@ -151,7 +183,7 @@ export function HorizontalLiquidityChart({
 
   if (chartData.length === 0) {
     return (
-      <div className="bg-gray-50 dark:bg-gray-900 rounded-xl px-2 py-3 md:p-6">
+      <div className="bg-gray-50 dark:bg-gray-900 rounded-lg px-2 py-3 md:p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Liquidity Distribution
         </h3>
@@ -167,7 +199,7 @@ export function HorizontalLiquidityChart({
   const currentPriceMid = currentPriceEntry?.midPrice;
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 rounded-xl px-2 py-3 md:p-6">
+    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg px-2 py-3 md:p-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
         Liquidity Distribution
       </h3>
@@ -176,18 +208,21 @@ export function HorizontalLiquidityChart({
           <BarChart
             data={chartData}
             layout="vertical"
-            margin={{ top: 10, right: -30, left: 20, bottom: 15 }}
+            margin={{ top: 10, right: -35, left: -10, bottom: 15 }}
             barSize={16}
           >
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="#374151"
+              stroke={isDarkMode ? '#374151' : '#e5e7eb'}
               horizontal={false}
               vertical={true}
             />
             <XAxis
               type="number"
-              tick={{ fill: '#9ca3af', fontSize: 12 }}
+              reversed={true}
+              stroke={isDarkMode ? '#9ca3af' : '#6b7280'}
+              style={{ fontSize: '12px' }}
+              tick={{ fill: isDarkMode ? '#d1d5db' : '#4b5563' }}
               tickFormatter={(value) => {
                 if (value >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
                 if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
@@ -199,12 +234,14 @@ export function HorizontalLiquidityChart({
               type="category"
               dataKey="priceLabel"
               orientation="right"
-              tick={{ fill: '#9ca3af', fontSize: 10 }}
+              stroke={isDarkMode ? '#9ca3af' : '#6b7280'}
+              style={{ fontSize: '10px' }}
+              tick={{ fill: isDarkMode ? '#d1d5db' : '#4b5563' }}
               width={80}
               domain={priceDomain ? [priceDomain[0], priceDomain[1]] : undefined}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="liquidityActive" radius={[0, 8, 8, 0]}>
+            <Bar dataKey="liquidityActive" radius={[8, 0, 0, 8]}>
               {chartData.map((entry) => {
                 let fill = '#10B981'; // Green (above)
                 if (entry.isCurrent) {

@@ -115,9 +115,7 @@ export interface TickProcessed {
   liquidityActive: string; // Using string instead of JSBI for serialization
   liquidityNet: string;
   price0: string;
-}
-
-export interface LiquidityChartEntry {
+}export interface LiquidityChartEntry {
   activeLiquidity: number;
   price0: number;
   tick: number;

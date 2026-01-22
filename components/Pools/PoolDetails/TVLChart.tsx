@@ -654,6 +654,7 @@ export function TVLChart({ poolData, loading, onPriceDomainChange, onChartHeight
               style={{ fontSize: '12px' }}
               tick={{ fill: isDarkMode ? '#d1d5db' : '#4b5563' }}
               ticks={xAxisTicks}
+              interval={1}
             />
             <YAxis
               yAxisId="left"

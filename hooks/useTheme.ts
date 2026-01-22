@@ -5,9 +5,10 @@ import { useState, useEffect } from 'react';
 /**
  * Hook to detect the current theme (dark/light mode)
  * Checks both document class and system preference
+ * Defaults to dark mode to show vaultolight.png on initial load
  */
 export function useTheme() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
     // Check if dark mode is active
