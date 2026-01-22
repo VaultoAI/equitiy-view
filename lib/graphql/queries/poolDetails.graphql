@@ -27,6 +27,8 @@ query PoolDetails($poolId: ID!) {
       volumeUSD
       feesUSD
       tvlUSD
+      token0Price
+      token1Price
       open
       high
       low
