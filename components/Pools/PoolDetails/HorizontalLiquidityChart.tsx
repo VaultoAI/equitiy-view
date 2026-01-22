@@ -151,7 +151,7 @@ export function HorizontalLiquidityChart({
       <div className="bg-gray-50 dark:bg-gray-900 rounded-lg px-2 py-3 md:p-6">
         <div className="animate-pulse">
           <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-48 mb-4"></div>
-          <div className="bg-gray-300 dark:bg-gray-700 rounded" style={{ height: `${chartHeight + 7}px` }}></div>
+          <div className="bg-gray-300 dark:bg-gray-700 rounded" style={{ height: `${chartHeight + 5}px` }}></div>
         </div>
       </div>
     );
@@ -203,7 +203,7 @@ export function HorizontalLiquidityChart({
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
         Liquidity Distribution
       </h3>
-      <div style={{ height: `${chartHeight + 7}px` }}>
+      <div style={{ height: `${chartHeight + 5}px` }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
@@ -241,7 +241,7 @@ export function HorizontalLiquidityChart({
               domain={priceDomain ? [priceDomain[0], priceDomain[1]] : undefined}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="liquidityActive" radius={[8, 0, 0, 8]}>
+            <Bar dataKey="liquidityActive" radius={[0, 8, 8, 0]}>
               {chartData.map((entry) => {
                 let fill = '#10B981'; // Green (above)
                 if (entry.isCurrent) {
@@ -266,7 +266,7 @@ export function HorizontalLiquidityChart({
               align="center"
               height={36}
               content={() => (
-                <div className="flex gap-4 justify-center items-center pt-2" style={{ marginLeft: '-50px', marginTop: '10px' }}>
+                <div className="flex gap-4 justify-center items-center pt-2" style={{ marginLeft: '-50px', marginTop: '5px' }}>
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded bg-blue-600"></div>
                     <span className="text-sm text-gray-600 dark:text-gray-300">
