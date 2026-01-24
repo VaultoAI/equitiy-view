@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { useTheme } from '@/hooks/useTheme';
 
 interface VaultoLogoProps {
   width?: number;
@@ -12,9 +11,11 @@ interface VaultoLogoProps {
 
 /**
  * Vaulto logo component that switches between dark and light variants
- * based on the current theme:
+ * based on the current theme using CSS:
  * - Light mode: displays vaultodark.png (dark logo on light background)
  * - Dark mode: displays vaultolight.png (light logo on dark background)
+ * 
+ * No JavaScript switching - uses CSS to show/hide the appropriate logo
  */
 export function VaultoLogo({
   width = 150,
@@ -22,19 +23,27 @@ export function VaultoLogo({
   className = '',
   alt = 'Vaulto',
 }: VaultoLogoProps) {
-  const { isDarkMode } = useTheme();
-  
-  // In light mode, use dark logo; in dark mode, use light logo
-  const logoSrc = isDarkMode ? '/vaultolight.png' : '/vaultodark.png';
-
   return (
-    <Image
-      src={logoSrc}
-      alt={alt}
-      width={width}
-      height={height}
-      className={className}
-    />
+    <div className={`relative ${className}`} style={{ width, height }}>
+      {/* Light mode logo (dark text) - hidden in dark mode */}
+      <Image
+        src="/vaultodark.png"
+        alt={alt}
+        width={width}
+        height={height}
+        className="block dark:hidden"
+        priority
+      />
+      {/* Dark mode logo (light text) - hidden in light mode */}
+      <Image
+        src="/vaultolight.png"
+        alt={alt}
+        width={width}
+        height={height}
+        className="hidden dark:block"
+        priority
+      />
+    </div>
   );
 }
 

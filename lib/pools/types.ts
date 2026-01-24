@@ -121,9 +121,7 @@ export interface TickProcessed {
   tick: number;
   amount0Locked: number;
   amount1Locked: number;
-}
-
-export interface PoolTicksData {
+}export interface PoolTicksData {
   tick: number;
   liquidity: string;
   sqrtPrice: string;

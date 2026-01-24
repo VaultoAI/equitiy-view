@@ -56,17 +56,24 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     
+    // Log the full response for debugging
+    console.log(`📊 [GraphQL Proxy] Full response:`, JSON.stringify(data, null, 2));
+    
     if (data.errors && data.errors.length > 0) {
       console.error(`⚠️ [GraphQL Proxy] GraphQL errors:`, data.errors);
       data.errors.forEach((error: any) => {
         console.error(`  - ${error.message}`, error.extensions || '');
       });
     } else if (data.data) {
-      const poolsCount = data.data?.pools?.length || 0;
-      if (poolsCount > 0) {
-        console.log(`✅ [GraphQL Proxy] Successfully fetched ${poolsCount} pools`);
+      // Log different success messages based on query type
+      if (data.data.pools) {
+        console.log(`✅ [GraphQL Proxy] Successfully fetched ${data.data.pools.length} pools`);
+      } else if (data.data.pool) {
+        console.log(`✅ [GraphQL Proxy] Successfully fetched pool: ${data.data.pool.id}, ticks: ${data.data.pool.ticks?.length || 0}`);
+      } else if (data.data.swaps) {
+        console.log(`✅ [GraphQL Proxy] Successfully fetched ${data.data.swaps.length} swaps`);
       } else {
-        console.log(`⚠️ [GraphQL Proxy] Query succeeded but returned 0 pools`);
+        console.log(`✅ [GraphQL Proxy] Query succeeded`);
       }
     }
 

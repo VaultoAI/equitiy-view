@@ -51,22 +51,28 @@ export function usePoolTicks(poolAddress: string) {
       }
 
       try {
+        // Normalize pool address to lowercase (required by Uniswap subgraph)
+        const normalizedPoolId = poolAddress.toLowerCase();
+        
         // Fetch ticks in batches (Uniswap subgraph limits to 1000 per request)
         let allTicks: PoolTick[] = [];
         let skip = 0;
         let hasMore = true;
 
         while (hasMore) {
-          const { data: response } = await apolloClient.query<PoolTicksResponse>({
-            query: POOL_TICKS_QUERY,
-            variables: {
-              poolId: poolAddress,
-              skip,
-            },
+              const { data: response } = await apolloClient.query<PoolTicksResponse>({
+                query: POOL_TICKS_QUERY,
+                variables: {
+                  poolId: normalizedPoolId,
+                  skip,
+                },
             fetchPolicy: 'network-only',
           });
 
           if (!response?.pool?.ticks || response.pool.ticks.length === 0) {
+            if (!response?.pool) {
+              console.error(`❌ [usePoolTicks] Pool not found for ID: ${normalizedPoolId}`);
+            }
             hasMore = false;
             break;
           }
@@ -100,7 +106,7 @@ export function usePoolTicks(poolAddress: string) {
         const { data: finalResponse } = await apolloClient.query<PoolTicksResponse>({
           query: POOL_TICKS_QUERY,
           variables: {
-            poolId: poolAddress,
+            poolId: normalizedPoolId,
             skip: 0,
           },
           fetchPolicy: 'network-only',
@@ -122,7 +128,10 @@ export function usePoolTicks(poolAddress: string) {
       }
     },
     enabled: !!poolAddress,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 0, // Always consider data stale
+    gcTime: 0, // Don't cache at all
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
 
   const ticksData = useMemo<PoolTicksData | undefined>(() => {

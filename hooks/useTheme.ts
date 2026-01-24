@@ -5,10 +5,20 @@ import { useState, useEffect } from 'react';
 /**
  * Hook to detect the current theme (dark/light mode)
  * Checks both document class and system preference
- * Defaults to dark mode to show vaultolight.png on initial load
+ * Initializes by immediately checking the theme to avoid logo flash
  */
 export function useTheme() {
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  // Initialize by checking the theme immediately to avoid flash
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return (
+        document.documentElement.classList.contains('dark') ||
+        window.matchMedia('(prefers-color-scheme: dark)').matches
+      );
+    }
+    // Default to dark mode for SSR
+    return true;
+  });
 
   useEffect(() => {
     // Check if dark mode is active
@@ -21,7 +31,7 @@ export function useTheme() {
       }
     };
 
-    // Initial check
+    // Initial check (in case state wasn't initialized properly)
     checkDarkMode();
 
     // Watch for theme changes via class changes
