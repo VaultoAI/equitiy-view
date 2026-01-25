@@ -170,7 +170,36 @@ function getEtherscanUrl(txHash: string): string {
 }
 
 export function PoolTransactionsTable({ poolAddress, poolData }: PoolTransactionsTableProps) {
-  const { data: transactions, loading, error } = usePoolTransactions(poolAddress, 100);
+  const { data: transactions, loading, error } = usePoolTransactions(poolAddress, 1000);
+
+  // Calculate net buy and sell volumes from swap transactions
+  const { netBuyVolume, netSellVolume } = (() => {
+    if (!transactions || !poolData) {
+      return { netBuyVolume: 0, netSellVolume: 0 };
+    }
+
+    let buyVolume = 0;
+    let sellVolume = 0;
+
+    transactions.forEach((tx) => {
+      // Only process swap transactions
+      if (tx.type !== 'swap') return;
+
+      // Determine if this is a buy or sell
+      const label = getTransactionTypeLabel(tx.type, tx, poolData, false);
+      const amountUSD = parseFloat(tx.amountUSD);
+
+      if (isNaN(amountUSD) || amountUSD <= 0) return;
+
+      if (label === 'Buy Stock' || label === 'Buy') {
+        buyVolume += amountUSD;
+      } else if (label === 'Sell Stock' || label === 'Sell') {
+        sellVolume += amountUSD;
+      }
+    });
+
+    return { netBuyVolume: buyVolume, netSellVolume: sellVolume };
+  })();
 
   if (loading) {
     return (
@@ -246,9 +275,29 @@ export function PoolTransactionsTable({ poolAddress, poolData }: PoolTransaction
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 p-3 md:p-6 rounded-lg mb-6">
-      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
-        Transactions
-      </h3>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4 mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Transactions
+        </h3>
+        <div className="flex items-center gap-2 md:gap-3">
+          {netBuyVolume > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs md:text-sm text-gray-600 dark:text-gray-400">Net Buy:</span>
+              <span className="inline-flex items-center px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                {formatCurrency(netBuyVolume)}
+              </span>
+            </div>
+          )}
+          {netSellVolume > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs md:text-sm text-gray-600 dark:text-gray-400">Net Sell:</span>
+              <span className="inline-flex items-center px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm font-semibold bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">
+                {formatCurrency(netSellVolume)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>

@@ -8,7 +8,7 @@ const nextConfig = {
     unoptimized: true,
   },
   
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
@@ -20,7 +20,17 @@ const nextConfig = {
     config.ignoreWarnings = [
       { module: /node_modules\/@metamask\/sdk/ },
       { module: /node_modules\/pino/ },
+      { module: /shared-memory-mcp/ },
     ];
+    
+    // Exclude shared-memory-mcp directory from compilation
+    if (!isServer) {
+      config.module.rules.push({
+        test: /\.ts$/,
+        include: /shared-memory-mcp/,
+        loader: 'ignore-loader',
+      });
+    }
     
     return config;
   },
