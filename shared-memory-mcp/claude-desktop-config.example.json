@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "shared-memory": {
-      "command": "node",
-      "args": ["/path/to/shared-memory-mcp/dist/server.js"],
-      "env": {}
-    }
-  }
-}
