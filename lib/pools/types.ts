@@ -108,9 +108,7 @@ export interface PoolTick {
   liquidityNet: string;
   price0: string;
   price1: string;
-}
-
-export interface TickProcessed {
+}export interface TickProcessed {
   tick: number;
   liquidityActive: string; // Using string instead of JSBI for serialization
   liquidityNet: string;

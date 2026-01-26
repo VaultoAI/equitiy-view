@@ -66,12 +66,20 @@ export function PoolDetailsStats({ poolData, loading, txCount24H }: PoolDetailsS
         </div>
       </div>
       <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
-        <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Fees 24h</div>
+        {/* Mobile: Show Fees 24h, Desktop: Show Fees 30d */}
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+          <span className="md:hidden">Fees 24h</span>
+          <span className="hidden md:inline">Fees 30d</span>
+        </div>
         <div className="flex items-baseline gap-2">
-          <div className="text-lg font-semibold">{formatCurrency(poolData.feesUSD24H || 0)}</div>
+          <div className="text-lg font-semibold">
+            <span className="md:hidden">{formatCurrency(poolData.feesUSD24H || 0)}</span>
+            <span className="hidden md:inline">{formatCurrency(poolData.feesUSD30D || 0)}</span>
+          </div>
+          {/* Only show diff on mobile where 24h fees are displayed */}
           {poolData.feesUSD24HDiff !== undefined && (
             <span
-              className={`text-xs ${
+              className={`text-xs md:hidden ${
                 poolData.feesUSD24HDiff >= 0
                   ? 'text-green-600 dark:text-green-400'
                   : 'text-red-600 dark:text-red-400'
