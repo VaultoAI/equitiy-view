@@ -7,32 +7,31 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // The old hosted subgraph endpoint has been removed
-    // New endpoint requires The Graph API key via gateway
+    // The Graph docs: use Bearer auth (Authorization header) + base URL (no key in path).
     // Subgraph ID for Uniswap V3: 5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV
-    // Get API key from: https://thegraph.com/studio/apikeys/
     const graphApiKey = process.env.NEXT_PUBLIC_THE_GRAPH_API_KEY || process.env.THE_GRAPH_API_KEY;
     const customUrl = process.env.NEXT_PUBLIC_UNISWAP_GRAPHQL_URL;
-    
+    const SUBGRAPH_ID = '5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV';
+    const GATEWAY_BASE = 'https://gateway.thegraph.com/api/subgraphs/id';
+
     let graphqlUrl: string;
-    
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
     if (customUrl) {
       graphqlUrl = customUrl;
       console.log(`🔍 [GraphQL Proxy] Using custom URL: ${customUrl}`);
-    } else if (graphApiKey) {
-      // Use The Graph Gateway with API key
-      graphqlUrl = `https://gateway.thegraph.com/api/${graphApiKey}/subgraphs/id/5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV`;
-      console.log(`🔍 [GraphQL Proxy] Using The Graph Gateway with API key`);
     } else {
-      // Fallback: Try using the public endpoint (may have rate limits or require auth)
-      // Note: This may not work without an API key - users should get one from https://thegraph.com/studio/apikeys/
-      graphqlUrl = 'https://gateway.thegraph.com/api/subgraphs/id/5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV';
-      console.warn(`⚠️ [GraphQL Proxy] No API key found. Using public endpoint (may fail). Get API key from: https://thegraph.com/studio/apikeys/`);
+      graphqlUrl = `${GATEWAY_BASE}/${SUBGRAPH_ID}`;
+      if (graphApiKey) {
+        headers['Authorization'] = `Bearer ${graphApiKey}`;
+        console.log(`🔍 [GraphQL Proxy] Using Gateway with Bearer auth`);
+      } else {
+        console.warn(`⚠️ [GraphQL Proxy] No API key. Using public endpoint (may fail). Get key: https://thegraph.com/studio/apikeys/`);
+      }
     }
 
     console.log(`🔍 [GraphQL Proxy] Forwarding query to ${graphqlUrl}`);
     if (body.query) {
-      // Log a simplified version of the query (first 200 chars)
       const queryPreview = body.query.replace(/\s+/g, ' ').substring(0, 200);
       console.log(`📝 [GraphQL Proxy] Query: ${queryPreview}...`);
       if (body.variables) {
@@ -42,9 +41,7 @@ export async function POST(request: NextRequest) {
 
     const response = await fetch(graphqlUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(body),
     });
 

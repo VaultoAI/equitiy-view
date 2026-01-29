@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:tokenized-pools": "npx tsx scripts/test-tokenized-stock-pools-api.ts"
   },
   "dependencies": {
     "@apollo/client": "^3.8.10",

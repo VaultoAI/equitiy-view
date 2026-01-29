@@ -391,18 +391,23 @@ export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
 
   console.log(`🏊 [Pool Fetchers] Fetching tokenized stock pools for ${TOKENIZED_STOCK_ADDRESSES.length} tokens...`);
 
-  // Get GraphQL endpoint
+  // Get GraphQL endpoint and auth (per The Graph docs: managing-api-keys)
   const graphApiKey = process.env.NEXT_PUBLIC_THE_GRAPH_API_KEY || process.env.THE_GRAPH_API_KEY;
   const customUrl = process.env.NEXT_PUBLIC_UNISWAP_GRAPHQL_URL;
-  
+  const SUBGRAPH_ID = '5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV';
+  const GATEWAY_BASE = 'https://gateway.thegraph.com/api/subgraphs/id';
+
   let graphqlUrl: string;
-  
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
   if (customUrl) {
     graphqlUrl = customUrl;
-  } else if (graphApiKey) {
-    graphqlUrl = `https://gateway.thegraph.com/api/${graphApiKey}/subgraphs/id/5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV`;
   } else {
-    graphqlUrl = 'https://gateway.thegraph.com/api/subgraphs/id/5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV';
+    graphqlUrl = `${GATEWAY_BASE}/${SUBGRAPH_ID}`;
+    // Prefer Bearer auth (docs: "added layer of security"). URL has no key in path.
+    if (graphApiKey) {
+      headers['Authorization'] = `Bearer ${graphApiKey}`;
+    }
   }
 
   // Fetch pools for all tokens in parallel
@@ -410,9 +415,7 @@ export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
     try {
       const response = await fetchWithTimeoutAndRetry(graphqlUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           query: TOP_V3_POOLS_QUERY,
           variables: {
@@ -430,6 +433,19 @@ export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
 
       if (result.errors && result.errors.length > 0) {
         console.error(`❌ [Pool Fetchers] GraphQL errors for token ${tokenAddress}:`, result.errors);
+        const msg = String((result.errors[0] as { message?: string })?.message ?? '');
+        if (
+          msg.includes('bad indexers') ||
+          msg.includes('indexing_error') ||
+          msg.includes('auth error') ||
+          msg.includes('too far behind')
+        ) {
+          const err = new Error(
+            `Subgraph unavailable: ${msg.slice(0, 120)}. See TOKENIZED_STOCK_POOLS_API_FAILURE.md.`
+          ) as Error & { statusCode?: number };
+          err.statusCode = 503;
+          throw err;
+        }
       }
 
       const responseData: PoolResponse = result.data || { pools: [] };
@@ -555,6 +571,7 @@ export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
       return pools.length > 0 ? pools[0] : null;
     } catch (err) {
       console.error(`❌ [Pool Fetchers] Error fetching pools for token ${tokenAddress}:`, err);
+      if ((err as Error & { statusCode?: number })?.statusCode === 503) throw err;
       return null;
     }
   });

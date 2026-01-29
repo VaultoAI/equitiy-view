@@ -18,6 +18,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Function to test endpoint with retries
+# expected_status: single code (e.g. 200) or space-separated (e.g. "200 503")
 test_endpoint() {
     local url=$1
     local description=$2
@@ -30,9 +31,9 @@ test_endpoint() {
         http_code=$(echo "$response" | tail -n1)
         body=$(echo "$response" | sed '$d')
         
-        if [ "$http_code" = "$expected_status" ]; then
+        if echo " $expected_status " | grep -q " $http_code "; then
             echo -e "${GREEN}✓${NC} (HTTP $http_code)"
-            if [ "$expected_status" = "200" ] && echo "$body" | grep -q "json"; then
+            if echo " $expected_status " | grep -q " 200 " && [ "$http_code" = "200" ] && echo "$body" | grep -q "json"; then
                 echo "$body" | python3 -m json.tool 2>/dev/null | head -15 || echo "$body" | head -5
             fi
             return 0
@@ -105,8 +106,8 @@ if [ $? -eq 0 ]; then
     
     echo ""
     
-    # Test pool endpoints
-    test_endpoint "$BASE_URL/api/cache/tokenized-stock-pools" "Tokenized Stock Pools Endpoint"
+    # Test pool endpoints (tokenized-stock-pools: 200 = OK, 503 = subgraph unavailable)
+    test_endpoint "$BASE_URL/api/cache/tokenized-stock-pools" "Tokenized Stock Pools Endpoint" "200 503"
     echo ""
     test_endpoint "$BASE_URL/api/cache/solana-pools" "Solana Pools Endpoint"
 fi

@@ -22,13 +22,14 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('❌ [Tokenized Stock Pools API] Error:', error);
+    const status = (error as Error & { statusCode?: number })?.statusCode ?? 500;
     return NextResponse.json(
       { 
         error: 'Failed to fetch tokenized stock pools', 
         details: error instanceof Error ? error.message : 'Unknown error' 
       },
       { 
-        status: 500,
+        status,
         headers: {
           'Cache-Control': 'no-store',
         },

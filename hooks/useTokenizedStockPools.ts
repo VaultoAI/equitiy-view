@@ -24,7 +24,11 @@ export function useTokenizedStockPools(sortState: PoolTableSortState = {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch tokenized stock pools: ${response.statusText}`);
+        const data = await response.json().catch(() => ({})) as { error?: string; details?: string };
+        const message = response.status === 503 && (data.details || data.error)
+          ? (data.details || data.error)
+          : `Failed to fetch tokenized stock pools: ${response.statusText}`;
+        throw new Error(message);
       }
 
       const data = await response.json();

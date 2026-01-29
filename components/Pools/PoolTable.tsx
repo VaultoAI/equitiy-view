@@ -169,9 +169,42 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
   }
 
   if (error) {
+    const isSubgraphUnavailable =
+      /subgraph|indexing|indexer|bad indexers/i.test(error.message);
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="text-red-500">Error loading pools: {error.message}</div>
+      <div className="flex flex-col justify-center items-center py-12 px-4">
+        {isSubgraphUnavailable ? (
+          <>
+            <div
+              className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 max-w-xl text-center"
+              role="alert"
+            >
+              <p className="font-medium text-amber-800 dark:text-amber-200">
+                Ethereum tokenized stock pools cannot be loaded
+              </p>
+              <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+                The Uniswap V3 subgraph (The Graph) is currently unavailable or has not been indexed. This is an external dependency—not an issue with Vaulto. Pools will appear once the subgraph is available again.
+              </p>
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                <a
+                  href="https://status.thegraph.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:no-underline"
+                >
+                  Check The Graph status
+                </a>
+              </p>
+            </div>
+            {error.message && (
+              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400 max-w-xl truncate" title={error.message}>
+                {error.message}
+              </p>
+            )}
+          </>
+        ) : (
+          <div className="text-red-500 dark:text-red-400">Error loading pools: {error.message}</div>
+        )}
       </div>
     );
   }
@@ -179,7 +212,7 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
   if (pools.length === 0) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="text-gray-500">No pools found for your wallet tokens</div>
+        <div className="text-gray-500 dark:text-gray-400">No pools found</div>
       </div>
     );
   }
