@@ -223,7 +223,7 @@ export function PoolTransactionsTable({
     if (!transactions || transactions.length === 0) return [];
     return [...new Set(transactions.map((tx) => getTransactionTypeLabel(tx.type, tx, poolData, false)))].sort(
       (a, b) => PILL_ORDER.indexOf(a) - PILL_ORDER.indexOf(b)
-    );
+    ).filter((label) => label !== 'Collect Fees');
   }, [transactions, poolData]);
 
   // Filter: include only rows whose Type column label exactly equals typeFilter. Each tx has exactly one label.
@@ -368,7 +368,7 @@ export function PoolTransactionsTable({
             </button>
             {uniqueLabels.map((label) => {
               const isSelected = typeFilter === label;
-              const labelMobile = PILL_LABEL_MOBILE[label] ?? label;
+              const displayLabel = PILL_LABEL_MOBILE[label] ?? label;
               return (
                 <button
                   key={label}
@@ -377,8 +377,7 @@ export function PoolTransactionsTable({
                   onClick={() => setTypeFilter(label)}
                   className={`inline-flex items-center px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm font-medium transition-colors ${getFilterPillStyles(label, isSelected)}`}
                 >
-                  <span className="md:hidden">{labelMobile}</span>
-                  <span className="hidden md:inline">{label}</span>
+                  {displayLabel}
                 </button>
               );
             })}

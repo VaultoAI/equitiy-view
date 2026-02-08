@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:tokenized-pools": "npx tsx scripts/test-tokenized-stock-pools-api.ts"
+    "test:tokenized-pools": "npx tsx scripts/test-tokenized-stock-pools-api.ts",
+    "export:tslaon-pool": "npx tsx scripts/export-tslaon-pool-csv.ts"
   },
   "dependencies": {
     "@apollo/client": "^3.8.10",
