@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { usePoolTransactions } from '@/hooks/usePoolTransactions';
 import { PoolTransaction, PoolData, Token } from '@/lib/pools/types';
 import { formatCurrency } from '@/lib/utils/formatting';
@@ -9,6 +10,9 @@ import { TokenLogo } from '@/components/TokenLogo';
 interface PoolTransactionsTableProps {
   poolAddress: string;
   poolData?: PoolData;
+  /** Filter value: exact Type column label or 'all'. Lifted from parent so it persists across remounts. */
+  typeFilter?: 'all' | string;
+  onTypeFilterChange?: (value: 'all' | string) => void;
 }
 
 function formatDate(timestamp: number): string {
@@ -78,10 +82,16 @@ function formatTokenAmount(amount: string, decimals: number): string {
   return rounded.toFixed(1).replace(/\.?0+$/, '') || '0';
 }
 
+const ZERO_AMOUNT_EPSILON = 1e-10;
+
 function isCollectTransaction(tx: PoolTransaction): boolean {
   const amount0Num = parseFloat(tx.amount0);
   const amount1Num = parseFloat(tx.amount1);
-  return tx.type === 'burn' && amount0Num === 0 && amount1Num === 0;
+  return (
+    tx.type === 'burn' &&
+    Math.abs(amount0Num) < ZERO_AMOUNT_EPSILON &&
+    Math.abs(amount1Num) < ZERO_AMOUNT_EPSILON
+  );
 }
 
 function getTransactionTypeLabel(
@@ -169,8 +179,71 @@ function getEtherscanUrl(txHash: string): string {
   return `https://etherscan.io/tx/${txHash}`;
 }
 
-export function PoolTransactionsTable({ poolAddress, poolData }: PoolTransactionsTableProps) {
+/** Filter = exact string shown in Type column, or 'all'. No mapping, no keys. */
+const PILL_ORDER = ['Collect Fees', 'Buy Stock', 'Sell Stock', 'Add Liquidity', 'Remove Liquidity', 'Swap'];
+
+/** Short labels for filter pills on mobile (match Type column mobile labels). */
+const PILL_LABEL_MOBILE: Record<string, string> = {
+  'Collect Fees': 'Collect',
+  'Buy Stock': 'Buy',
+  'Sell Stock': 'Sell',
+  'Add Liquidity': 'Add',
+  'Remove Liquidity': 'Remove',
+  'Swap': 'Swap',
+};
+
+function getFilterPillStyles(label: string, selected: boolean): string {
+  if (!selected) return 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700';
+  if (label === 'Collect Fees') return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200';
+  if (label === 'Buy Stock') return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
+  if (label === 'Sell Stock') return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
+  if (label === 'Add Liquidity') return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
+  if (label === 'Remove Liquidity') return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
+  if (label === 'Swap') return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200';
+  return 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
+}
+
+export function PoolTransactionsTable({
+  poolAddress,
+  poolData,
+  typeFilter: typeFilterProp,
+  onTypeFilterChange,
+}: PoolTransactionsTableProps) {
   const { data: transactions, loading, error } = usePoolTransactions(poolAddress, 1000);
+  const [internalFilter, setInternalFilter] = useState<'all' | string>('all');
+
+  // Use lifted state from parent when provided so filter persists across remounts; else internal state
+  const typeFilter = typeFilterProp ?? internalFilter;
+  const setTypeFilter = onTypeFilterChange ?? setInternalFilter;
+
+  // Same label as Type column: getTransactionTypeLabel(tx.type, tx, poolData, false). One label per tx.
+  const getTypeColumnLabel = (tx: PoolTransaction) => getTransactionTypeLabel(tx.type, tx, poolData, false);
+
+  const uniqueLabels = useMemo(() => {
+    if (!transactions || transactions.length === 0) return [];
+    return [...new Set(transactions.map((tx) => getTransactionTypeLabel(tx.type, tx, poolData, false)))].sort(
+      (a, b) => PILL_ORDER.indexOf(a) - PILL_ORDER.indexOf(b)
+    );
+  }, [transactions, poolData]);
+
+  // Filter: include only rows whose Type column label exactly equals typeFilter. Each tx has exactly one label.
+  // Dedupe by (transactionHash, type, timestamp) so the same event is not shown twice.
+  const filteredTransactions = useMemo(() => {
+    if (!transactions) return [];
+    const byLabel =
+      typeFilter === 'all'
+        ? transactions
+        : transactions.filter(
+            (tx) => getTransactionTypeLabel(tx.type, tx, poolData, false) === typeFilter
+          );
+    const seen = new Set<string>();
+    return byLabel.filter((tx) => {
+      const id = `${tx.transactionHash}-${tx.type}-${tx.timestamp}`;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }, [transactions, typeFilter, poolData]);
 
   // Calculate net buy and sell volumes from swap transactions
   const { netBuyVolume, netSellVolume } = (() => {
@@ -276,9 +349,41 @@ export function PoolTransactionsTable({ poolAddress, poolData }: PoolTransaction
   return (
     <div className="bg-gray-50 dark:bg-gray-900 p-3 md:p-6 rounded-lg mb-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4 mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Transactions
-        </h3>
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Transactions
+          </h3>
+          <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+            <button
+              type="button"
+              onClick={() => setTypeFilter('all')}
+              aria-pressed={typeFilter === 'all'}
+              className={`inline-flex items-center px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm font-medium transition-colors ${
+                typeFilter === 'all'
+                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              All
+            </button>
+            {uniqueLabels.map((label) => {
+              const isSelected = typeFilter === label;
+              const labelMobile = PILL_LABEL_MOBILE[label] ?? label;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setTypeFilter(label)}
+                  className={`inline-flex items-center px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm font-medium transition-colors ${getFilterPillStyles(label, isSelected)}`}
+                >
+                  <span className="md:hidden">{labelMobile}</span>
+                  <span className="hidden md:inline">{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div className="flex items-center gap-2 md:gap-3">
           {netBuyVolume > 0 && (
             <div className="flex items-center gap-1.5">
@@ -298,6 +403,11 @@ export function PoolTransactionsTable({ poolAddress, poolData }: PoolTransaction
           )}
         </div>
       </div>
+      {typeFilter !== 'all' && filteredTransactions.length === 0 && (
+        <p className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm mb-2">
+          No {typeFilter.toLowerCase()} transactions
+        </p>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -320,7 +430,7 @@ export function PoolTransactionsTable({ poolAddress, poolData }: PoolTransaction
             </tr>
           </thead>
           <tbody>
-            {transactions.map((tx) => {
+            {filteredTransactions.map((tx) => {
               const amount0Num = parseFloat(tx.amount0);
               const amount1Num = parseFloat(tx.amount1);
               const amount0Formatted = formatTokenAmount(tx.amount0, tx.token0Decimals);

@@ -28,6 +28,8 @@ function PoolDetailsContent() {
   // State for price domain and chart height from TVLChart
   const [priceDomain, setPriceDomain] = useState<[number, number] | undefined>(undefined);
   const [chartHeight, setChartHeight] = useState<number>(300);
+  // Transaction type filter lifted here so it persists if the table remounts
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState<'all' | string>('all');
   
   // Call hook unconditionally (required by React Hooks rules)
   // Pass empty string for Solana to prevent unnecessary fetching
@@ -287,7 +289,12 @@ function PoolDetailsContent() {
               </div>
             </div>
             
-            <PoolTransactionsTable poolAddress={poolAddress} poolData={poolData} />
+            <PoolTransactionsTable
+              poolAddress={poolAddress}
+              poolData={poolData}
+              typeFilter={transactionTypeFilter}
+              onTypeFilterChange={setTransactionTypeFilter}
+            />
           </div>
         )}
       </div>
