@@ -99,25 +99,25 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-gray-100 dark:bg-gray-800">
-              <th className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 px-4 py-4 text-left text-base font-semibold rounded-tl-lg">Pool</th>
-              <th className="px-4 py-4 text-left text-base font-semibold">
+              <th className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 px-4 py-4 text-left text-sm md:text-base font-semibold rounded-tl-lg">Pool</th>
+              <th className="px-4 py-4 text-left text-sm md:text-base font-semibold">
                 <SortButton field={PoolSortFields.TVL}>TVL</SortButton>
               </th>
               {SHOW_FEES_24H_COLUMN && (
-                <th className="px-4 py-4 text-left text-base font-semibold">
+                <th className="px-4 py-4 text-left text-sm md:text-base font-semibold">
                   <SortButton field={PoolSortFields.Fees24h}>Fees 24h</SortButton>
                 </th>
               )}
-              <th className="px-4 py-4 text-left text-base font-semibold">
+              <th className="px-4 py-4 text-left text-sm md:text-base font-semibold">
                 <SortButton field={PoolSortFields.Volume24h}>Volume 24h</SortButton>
               </th>
-              <th className="px-4 py-4 text-left text-base font-semibold">
+              <th className="px-4 py-4 text-left text-sm md:text-base font-semibold">
                 <SortButton field={PoolSortFields.Fees30d}>Fees 30d</SortButton>
               </th>
-              <th className="px-4 py-4 text-left text-base font-semibold">
+              <th className="px-4 py-4 text-left text-sm md:text-base font-semibold">
                 <SortButton field={PoolSortFields.Volume30D}>Volume 30d</SortButton>
               </th>
-              <th className="px-4 py-4 text-left text-base font-semibold rounded-tr-lg">
+              <th className="px-4 py-4 text-left text-sm md:text-base font-semibold rounded-tr-lg">
                 <SortButton field={PoolSortFields.Apr}>APR</SortButton>
               </th>
             </tr>
@@ -224,25 +224,25 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-gray-100 dark:bg-gray-800">
-            <th className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 px-4 py-4 text-left text-base font-semibold rounded-tl-lg">Pool</th>
-            <th className="px-4 py-4 text-left text-base font-semibold">
+            <th className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 px-4 py-4 text-left text-sm md:text-base font-semibold rounded-tl-lg">Pool</th>
+            <th className="px-4 py-4 text-left text-sm md:text-base font-semibold">
               <SortButton field={PoolSortFields.TVL}>TVL</SortButton>
             </th>
             {SHOW_FEES_24H_COLUMN && (
-              <th className="px-4 py-4 text-left text-base font-semibold">
+              <th className="px-4 py-4 text-left text-sm md:text-base font-semibold">
                 <SortButton field={PoolSortFields.Fees24h}>Fees 24h</SortButton>
               </th>
             )}
-            <th className="px-4 py-4 text-left text-base font-semibold">
+            <th className="px-4 py-4 text-left text-sm md:text-base font-semibold">
               <SortButton field={PoolSortFields.Volume24h}>Volume 24h</SortButton>
             </th>
-            <th className="px-4 py-4 text-left text-base font-semibold">
+            <th className="px-4 py-4 text-left text-sm md:text-base font-semibold">
               <SortButton field={PoolSortFields.Fees30d}>Fees 30d</SortButton>
             </th>
-            <th className="px-4 py-4 text-left text-base font-semibold">
+            <th className="px-4 py-4 text-left text-sm md:text-base font-semibold">
               <SortButton field={PoolSortFields.Volume30D}>Volume 30d</SortButton>
             </th>
-            <th className="px-4 py-4 text-left text-base font-semibold rounded-tr-lg">
+            <th className="px-4 py-4 text-left text-sm md:text-base font-semibold rounded-tr-lg">
               <SortButton field={PoolSortFields.Apr}>APR</SortButton>
             </th>
           </tr>
@@ -253,17 +253,17 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
           ))}
           {sortedPools.length > 0 && (
             <tr className="bg-gray-100 dark:bg-gray-800 font-semibold">
-              <td className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-800 px-4 py-4 text-base">
+              <td className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-800 px-4 py-4 text-sm md:text-base">
                 Total
               </td>
-              <td className="px-4 py-4 text-base">{formatCurrency(totals.tvl)}</td>
+              <td className="px-4 py-4 text-sm md:text-base">{formatCurrency(totals.tvl)}</td>
               {SHOW_FEES_24H_COLUMN && (
-                <td className="px-4 py-4 text-base">{formatCurrency(totals.fees24h)}</td>
+                <td className="px-4 py-4 text-sm md:text-base">{formatCurrency(totals.fees24h)}</td>
               )}
-              <td className="px-4 py-4 text-base">{formatCurrency(totals.volume24h)}</td>
-              <td className="px-4 py-4 text-base">{formatCurrency(totals.fees30d)}</td>
-              <td className="px-4 py-4 text-base">{formatCurrency(totals.volume30d)}</td>
-              <td className="px-4 py-4 text-base">
+              <td className="px-4 py-4 text-sm md:text-base">{formatCurrency(totals.volume24h)}</td>
+              <td className="px-4 py-4 text-sm md:text-base">{formatCurrency(totals.fees30d)}</td>
+              <td className="px-4 py-4 text-sm md:text-base">{formatCurrency(totals.volume30d)}</td>
+              <td className="px-4 py-4 text-sm md:text-base">
                 {totals.tvl < 100 ? (
                   <APRTooltip apr="NA" showLowTvlWarning={true} />
                 ) : (

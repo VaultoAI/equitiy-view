@@ -12,8 +12,8 @@ interface PageHeaderProps {
 
 export function PageHeader({ pageLabel, showRefresh = true }: PageHeaderProps) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 mb-6 md:mb-8">
-      <div className="flex flex-col">
+    <div className="flex flex-nowrap items-center justify-between gap-2 md:gap-4 mb-6 md:mb-8">
+      <div className="flex flex-col min-w-0 shrink">
         <VaultoLogo
           width={150}
           height={50}
@@ -21,8 +21,10 @@ export function PageHeader({ pageLabel, showRefresh = true }: PageHeaderProps) {
         />
         <span className="hidden md:inline text-base md:text-lg font-medium -mt-1">{pageLabel}</span>
       </div>
-      <div className="flex items-center gap-4 md:gap-6">
-        <HeaderNavLinks />
+      <div className="flex items-center gap-2 md:gap-6 shrink-0">
+        <div className="hidden md:block">
+          <HeaderNavLinks />
+        </div>
         {showRefresh && (
           <div className="flex items-center gap-2">
             <CacheRefreshButton />

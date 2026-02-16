@@ -22,10 +22,12 @@ export default function Home() {
       <div className="max-w-7xl mx-auto">
         <PageHeader pageLabel="Public Equities" />
 
-        {/* Top 3 pools by TVL - charts */}
-        {(loading || pools.length > 0) && (
-          <TopPoolsChartsSection pools={pools} loading={loading} />
-        )}
+        {/* Top 2 pools by TVL - charts (hidden on mobile) */}
+        <div className="hidden md:block">
+          {(loading || pools.length > 0) && (
+            <TopPoolsChartsSection pools={pools} loading={loading} />
+          )}
+        </div>
 
         {/* Pool Table - Always shown */}
         <PoolTable pools={pools} loading={loading} error={error} />

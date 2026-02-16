@@ -27,7 +27,7 @@ export function PoolTableRow({ pool, chainId = 1, showFees24hColumn = true, isAl
 
   return (
     <tr className={`${rowBg} group ${isSolana ? '' : 'cursor-pointer'}`}>
-      <td className={`sticky left-0 z-10 ${stickyBg} px-4 py-4 text-base`}>
+      <td className={`sticky left-0 z-10 ${stickyBg} px-4 py-4 text-sm md:text-base`}>
         {isSolana ? (
           <PoolDescription token0={pool.token0} token1={pool.token1} />
         ) : (
@@ -36,11 +36,11 @@ export function PoolTableRow({ pool, chainId = 1, showFees24hColumn = true, isAl
           </Link>
         )}
       </td>
-      <td className="px-4 py-4 text-base font-medium">
+      <td className="px-4 py-4 text-sm md:text-base font-medium">
         {formatCurrency(pool.tvl)}
       </td>
       {showFees24hColumn && (
-        <td className="px-4 py-4 text-base">
+        <td className="px-4 py-4 text-sm md:text-base">
           <div className="flex items-baseline gap-2">
             <span>{formatCurrency(pool.fees24h || 0)}</span>
             {pool.fees24HDiff !== undefined && (
@@ -58,10 +58,10 @@ export function PoolTableRow({ pool, chainId = 1, showFees24hColumn = true, isAl
           </div>
         </td>
       )}
-      <td className="px-4 py-4 text-base">{formatCurrency(pool.volume24h || 0)}</td>
-      <td className="px-4 py-4 text-base">{formatCurrency(pool.fees30d || 0)}</td>
-      <td className="px-4 py-4 text-base">{formatCurrency(pool.volume30d)}</td>
-      <td className="px-4 py-4 text-base">
+      <td className="px-4 py-4 text-sm md:text-base">{formatCurrency(pool.volume24h || 0)}</td>
+      <td className="px-4 py-4 text-sm md:text-base">{formatCurrency(pool.fees30d || 0)}</td>
+      <td className="px-4 py-4 text-sm md:text-base">{formatCurrency(pool.volume30d)}</td>
+      <td className="px-4 py-4 text-sm md:text-base">
         {pool.tvl < 100 ? (
           <APRTooltip apr="NA" showLowTvlWarning={true} />
         ) : (
