@@ -21,6 +21,12 @@ interface TVLChartProps {
   loading?: boolean;
   onPriceDomainChange?: (domain: [number, number]) => void;
   onChartHeightChange?: (height: number) => void;
+  /** When true, hides the volatility selector and volatility line (e.g. for home page charts) */
+  hideVolatility?: boolean;
+  /** When true, uses a larger title (e.g. for home page charts) */
+  largeTitle?: boolean;
+  /** When true, legend/tooltip show "Price" instead of token-specific label (e.g. "SLVon Price") */
+  simplePriceLabel?: boolean;
 }
 
 interface ChartDataPoint {
@@ -35,7 +41,7 @@ interface ChartDataPoint {
 
 type VolatilityPeriod = '1d' | '3d' | '7d';
 
-export function TVLChart({ poolData, loading, onPriceDomainChange, onChartHeightChange }: TVLChartProps) {
+export function TVLChart({ poolData, loading, onPriceDomainChange, onChartHeightChange, hideVolatility = false, largeTitle = false, simplePriceLabel = false }: TVLChartProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [volatilityPeriod, setVolatilityPeriod] = useState<VolatilityPeriod>('1d');
@@ -73,6 +79,23 @@ export function TVLChart({ poolData, loading, onPriceDomainChange, onChartHeight
       return `${poolData.token0.symbol} Price`;
     }
   }, [poolData]);
+
+  // Title: just the non-stablecoin token name (the asset being charted)
+  const titleTokenName = useMemo(() => {
+    if (!poolData) return '';
+    const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+    const USDT_ADDRESS = '0xdac17f958d2ee523a2206206994597c13d831ec7';
+    const DAI_ADDRESS = '0x6b175474e89094c44da98b954eedeac495271d0f';
+    const token0Address = poolData.token0.address.toLowerCase();
+    const token1Address = poolData.token1.address.toLowerCase();
+    const isToken0Stablecoin = [USDC_ADDRESS, USDT_ADDRESS, DAI_ADDRESS].includes(token0Address);
+    const isToken1Stablecoin = [USDC_ADDRESS, USDT_ADDRESS, DAI_ADDRESS].includes(token1Address);
+    if (isToken1Stablecoin) return poolData.token0.symbol;
+    if (isToken0Stablecoin) return poolData.token1.symbol;
+    return poolData.token0.symbol;
+  }, [poolData]);
+
+  const effectivePriceLabel = simplePriceLabel ? 'Price' : priceLabel;
 
   useEffect(() => {
     // Check if dark mode is active
@@ -425,8 +448,8 @@ export function TVLChart({ poolData, loading, onPriceDomainChange, onChartHeight
   if (!chartData || chartData.length === 0) {
     return (
       <div className="bg-gray-50 dark:bg-gray-900 p-3 md:p-6 rounded-lg mb-6">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
-          Pool Metrics & {priceLabel}
+        <h3 className={`font-semibold mb-4 text-gray-900 dark:text-gray-100 ${largeTitle ? 'text-xl md:text-2xl' : 'text-lg'}`}>
+          {titleTokenName}
         </h3>
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
           No TVL data available
@@ -459,7 +482,7 @@ export function TVLChart({ poolData, loading, onPriceDomainChange, onChartHeight
             )}
             {visibleElements.price && (
               <p className="text-sm text-gray-900 dark:text-gray-100">
-                <span className="text-orange-600 dark:text-orange-400">{priceLabel}:</span>{' '}
+                <span className="text-orange-600 dark:text-orange-400">{effectivePriceLabel}:</span>{' '}
                 <span className="font-semibold">
                   {data.price > 0 ? formatCurrency(data.price) : 'N/A'}
                 </span>
@@ -556,8 +579,8 @@ export function TVLChart({ poolData, loading, onPriceDomainChange, onChartHeight
     const legendItems = [
       { key: 'tvl' as const, name: 'TVL', color: '#3b82f6' },
       { key: 'volume' as const, name: 'Volume', color: '#10b981' },
-      { key: 'price' as const, name: priceLabel, color: '#f97316' },
-      { key: 'volatility' as const, name: 'Volatility', color: '#a855f7' },
+      { key: 'price' as const, name: effectivePriceLabel, color: '#f97316' },
+      ...(hideVolatility ? [] : [{ key: 'volatility' as const, name: 'Volatility' as const, color: '#a855f7' }]),
     ];
 
     return (
@@ -599,23 +622,25 @@ export function TVLChart({ poolData, loading, onPriceDomainChange, onChartHeight
   return (
     <div className="bg-gray-50 dark:bg-gray-900 px-2 py-3 md:p-6 rounded-lg">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Pool Metrics & {priceLabel}
+        <h3 className={`font-semibold text-gray-900 dark:text-gray-100 ${largeTitle ? 'text-xl md:text-2xl' : 'text-lg'}`}>
+          {titleTokenName}
         </h3>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-            Volatility:
-          </label>
-          <select
-            value={volatilityPeriod}
-            onChange={(e) => setVolatilityPeriod(e.target.value as VolatilityPeriod)}
-            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 cursor-pointer"
-          >
-            <option value="1d">1d</option>
-            <option value="3d">3d</option>
-            <option value="7d">7d</option>
-          </select>
-        </div>
+        {!hideVolatility && (
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+              Volatility:
+            </label>
+            <select
+              value={volatilityPeriod}
+              onChange={(e) => setVolatilityPeriod(e.target.value as VolatilityPeriod)}
+              className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 cursor-pointer"
+            >
+              <option value="1d">1d</option>
+              <option value="3d">3d</option>
+              <option value="7d">7d</option>
+            </select>
+          </div>
+        )}
       </div>
       <div ref={chartContainerRef} className="w-full" style={{ height: '300px' }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -703,10 +728,10 @@ export function TVLChart({ poolData, loading, onPriceDomainChange, onChartHeight
                 stroke="#f97316"
                 strokeWidth={2}
                 dot={false}
-                name={priceLabel}
+                name={effectivePriceLabel}
               />
             )}
-            {visibleElements.volatility && (
+            {!hideVolatility && visibleElements.volatility && (
               <Line
                 yAxisId="left"
                 type="monotone"

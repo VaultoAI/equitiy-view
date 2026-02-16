@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { WalletConnect } from '@/components/WalletConnect';
-import { MobileNavBar } from '@/components/Navigation/VerticalNav';
 import { PoolTable } from '@/components/Pools/PoolTable';
 import { WalletBalance } from '@/components/WalletDashboard/WalletBalance';
 import { useWalletPools } from '@/hooks/useWalletPools';
 import { PoolSortFields, PoolTableSortState } from '@/lib/pools/types';
 import { useAccount } from 'wagmi';
-import { VaultoLogo } from '@/components/VaultoLogo';
+import { PageHeader } from '@/components/PageHeader';
 
 export default function WalletPage() {
   const { isConnected, address } = useAccount();
@@ -31,23 +30,7 @@ export default function WalletPage() {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header with logo and nav */}
-        <div className="flex justify-between items-center mb-6 md:mb-8">
-          <div className="flex items-center gap-3">
-            <VaultoLogo 
-              width={150} 
-              height={50}
-              className="h-8 md:h-12 w-auto"
-            />
-            <span className="hidden md:inline text-base md:text-lg font-medium">Wallet</span>
-          </div>
-          {/* Mobile nav bar (includes wallet connect) */}
-          <MobileNavBar />
-          {/* Desktop wallet connect - hidden on mobile (shown in nav) */}
-          <div className="hidden md:block">
-            <WalletConnect />
-          </div>
-        </div>
+        <PageHeader pageLabel="Wallet" />
 
         {!isConnected ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">

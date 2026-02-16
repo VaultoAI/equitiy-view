@@ -9,18 +9,25 @@ import { APRTooltip } from './APRTooltip';
 interface PoolTableRowProps {
   pool: TablePool;
   chainId?: number;
+  /** When false, the Fees 24h cell is not rendered (kept for easy restore). */
+  showFees24hColumn?: boolean;
+  /** When true, row uses alternate background for zebra striping. */
+  isAlternateRow?: boolean;
 }
 
-export function PoolTableRow({ pool, chainId = 1 }: PoolTableRowProps) {
+export function PoolTableRow({ pool, chainId = 1, showFees24hColumn = true, isAlternateRow = false }: PoolTableRowProps) {
   // Determine chain from token0 or token1
   const chain = pool.token0?.chain || pool.token1?.chain || 'ETHEREUM';
   const isSolana = chain === 'SOLANA';
   const chainName = isSolana ? 'solana' : 'ethereum';
   const poolLink = `/pools/${chainName}/${pool.hash}`;
 
+  const rowBg = isAlternateRow ? 'bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-800';
+  const stickyBg = isAlternateRow ? 'bg-gray-50 dark:bg-gray-900 group-hover:bg-gray-100 dark:group-hover:bg-gray-800' : 'bg-white dark:bg-gray-950 group-hover:bg-gray-50 dark:group-hover:bg-gray-800';
+
   return (
-    <tr className={`border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 group ${isSolana ? '' : 'cursor-pointer'}`}>
-      <td className="sticky left-0 z-10 bg-white dark:bg-gray-950 group-hover:bg-gray-50 dark:group-hover:bg-gray-800 px-4 py-3">
+    <tr className={`${rowBg} group ${isSolana ? '' : 'cursor-pointer'}`}>
+      <td className={`sticky left-0 z-10 ${stickyBg} px-4 py-4 text-base`}>
         {isSolana ? (
           <PoolDescription token0={pool.token0} token1={pool.token1} />
         ) : (
@@ -29,46 +36,38 @@ export function PoolTableRow({ pool, chainId = 1 }: PoolTableRowProps) {
           </Link>
         )}
       </td>
-      <td className="px-4 py-3 text-sm font-medium">
+      <td className="px-4 py-4 text-base font-medium">
         {formatCurrency(pool.tvl)}
       </td>
-      <td className="px-4 py-3 text-sm">
-        <div className="flex items-baseline gap-2">
-          <span>{formatCurrency(pool.fees24h || 0)}</span>
-          {pool.fees24HDiff !== undefined && (
-            <span
-              className={`text-xs ${
-                pool.fees24HDiff >= 0
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-red-600 dark:text-red-400'
-              }`}
-            >
-              {pool.fees24HDiff >= 0 ? '+' : ''}
-              {formatCurrency(pool.fees24HDiff)}
-            </span>
-          )}
-        </div>
-      </td>
-      <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume24h || 0)}</td>
-      <td className="px-4 py-3 text-sm">{formatCurrency(pool.fees30d || 0)}</td>
-      <td className="px-4 py-3 text-sm">{formatCurrency(pool.volume30d)}</td>
-      <td className="px-4 py-3 text-sm">
+      {showFees24hColumn && (
+        <td className="px-4 py-4 text-base">
+          <div className="flex items-baseline gap-2">
+            <span>{formatCurrency(pool.fees24h || 0)}</span>
+            {pool.fees24HDiff !== undefined && (
+              <span
+                className={`text-xs ${
+                  pool.fees24HDiff >= 0
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-red-600 dark:text-red-400'
+                }`}
+              >
+                {pool.fees24HDiff >= 0 ? '+' : ''}
+                {formatCurrency(pool.fees24HDiff)}
+              </span>
+            )}
+          </div>
+        </td>
+      )}
+      <td className="px-4 py-4 text-base">{formatCurrency(pool.volume24h || 0)}</td>
+      <td className="px-4 py-4 text-base">{formatCurrency(pool.fees30d || 0)}</td>
+      <td className="px-4 py-4 text-base">{formatCurrency(pool.volume30d)}</td>
+      <td className="px-4 py-4 text-base">
         {pool.tvl < 100 ? (
           <APRTooltip apr="NA" showLowTvlWarning={true} />
         ) : (
           <APRTooltip apr={formatPercent(pool.apr)} />
         )}
       </td>
-      {!isSolana && (
-        <td className="hidden md:table-cell px-4 py-3">
-          <Link
-            href={poolLink}
-            className="inline-flex items-center justify-center px-1 md:px-3 py-0.5 md:py-1.5 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300"
-          >
-            View
-          </Link>
-        </td>
-      )}
     </tr>
   );
 }

@@ -110,11 +110,11 @@ export function CacheRefreshButton({ className = '', onRefreshComplete }: CacheR
       onClick={handleRefresh}
       disabled={isRefreshing}
       className={`
-        flex items-center gap-2 px-3 py-2 rounded-lg
+        h-10 flex items-center gap-2 px-3 rounded-lg
         bg-gray-100 dark:bg-gray-800
         hover:bg-gray-200 dark:hover:bg-gray-700
         disabled:opacity-50 disabled:cursor-not-allowed
-        transition-colors text-sm font-medium
+        transition-colors text-base font-medium
         text-gray-700 dark:text-gray-300
         ${className}
       `}

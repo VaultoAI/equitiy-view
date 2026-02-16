@@ -66,7 +66,7 @@ export function MobileNavBar() {
   const navItems = [
     { href: '/wallet', label: 'My Wallet', icon: HomeIcon },
     { href: '/', label: 'Tokenized Stocks', icon: EthIcon },
-    { href: '/sol', label: 'Solana Pools', icon: SolIcon },
+    { href: '/sol', label: 'Private Equity', icon: SolIcon },
   ];
 
   return (
@@ -101,43 +101,42 @@ export function MobileNavBar() {
   );
 }
 
-export function VerticalNav() {
+const NAV_ITEMS = [
+  { href: '/wallet', label: 'My Wallet', icon: HomeIcon },
+  { href: '/', label: 'Tokenized Stocks', icon: EthIcon },
+  { href: '/sol', label: 'Private Equity', icon: SolIcon },
+];
+
+/** Inline nav links for the page header (replaces side nav). */
+export function HeaderNavLinks() {
   const pathname = usePathname();
 
-  const navItems = [
-    { href: '/wallet', label: 'My Wallet', icon: HomeIcon },
-    { href: '/', label: 'Tokenized Stocks', icon: EthIcon },
-    { href: '/sol', label: 'Solana Pools', icon: SolIcon },
-  ];
-
   return (
-    <>
-      {/* Desktop Navigation - Fixed left side */}
-      <nav className="hidden md:block fixed left-4 top-1/2 -translate-y-1/2 z-50">
-        <div className="bg-gray-900 dark:bg-gray-950 rounded-full border border-gray-700 dark:border-gray-600 p-2 flex flex-col gap-2">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || 
-              (item.href === '/' && pathname === '/') ||
-              (item.href !== '/' && pathname?.startsWith(item.href));
-            const IconComponent = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`w-12 h-12 flex items-center justify-center rounded-full transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-white hover:bg-gray-800 dark:hover:bg-gray-800'
-                }`}
-                title={item.label}
-              >
-                <IconComponent />
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
-    </>
+    <nav className="flex items-center gap-4 md:gap-6">
+      {NAV_ITEMS.map((item) => {
+        const isActive =
+          pathname === item.href ||
+          (item.href === '/' && pathname === '/') ||
+          (item.href !== '/' && pathname?.startsWith(item.href));
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`text-sm md:text-base font-medium transition-colors ${
+              isActive
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+            }`}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
   );
+}
+
+export function VerticalNav() {
+  return null;
 }
 

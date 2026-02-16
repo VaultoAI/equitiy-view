@@ -12,9 +12,7 @@ import { PoolDetailsStatsButtons } from '@/components/Pools/PoolDetails/PoolDeta
 import { TVLChart } from '@/components/Pools/PoolDetails/TVLChart';
 import { HorizontalLiquidityChart } from '@/components/Pools/PoolDetails/HorizontalLiquidityChart';
 import { PoolTransactionsTable } from '@/components/Pools/PoolDetails/PoolTransactionsTable';
-import { WalletConnect } from '@/components/WalletConnect';
-import { MobileNavBar } from '@/components/Navigation/VerticalNav';
-import { VaultoLogo } from '@/components/VaultoLogo';
+import { PageHeader } from '@/components/PageHeader';
 import { CreateLiquidityProvider } from '@/contexts/CreateLiquidityContext';
 import { computeActiveLiquidityBands } from '@/lib/uniswap/activeLiquidity';
 
@@ -117,23 +115,7 @@ function PoolDetailsContent() {
     return (
       <div className="min-h-screen p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
-          {/* Header with logo and nav */}
-          <div className="flex justify-between items-center mb-6 md:mb-8">
-            <div className="flex items-center gap-3">
-              <VaultoLogo 
-                width={150} 
-                height={50}
-                className="h-8 md:h-12 w-auto"
-              />
-              <span className="hidden md:inline text-base md:text-lg font-medium">Pool</span>
-            </div>
-            {/* Mobile nav bar (includes wallet connect) */}
-            <MobileNavBar />
-            {/* Desktop: show wallet connect */}
-            <div className="hidden md:flex md:items-center md:gap-4">
-              <WalletConnect />
-            </div>
-          </div>
+          <PageHeader pageLabel="Pool" showRefresh={false} />
           <div className="text-center py-12">
             <div className="text-red-500 text-lg font-semibold mb-2">
               Pool details are not available for Solana pools
@@ -150,23 +132,7 @@ function PoolDetailsContent() {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header with logo and nav */}
-        <div className="flex justify-between items-center mb-6 md:mb-8">
-          <div className="flex items-center gap-3">
-            <VaultoLogo 
-              width={150} 
-              height={50}
-              className="h-8 md:h-12 w-auto"
-            />
-            <span className="hidden md:inline text-base md:text-lg font-medium">Pool</span>
-          </div>
-          {/* Mobile nav bar (includes wallet connect) */}
-          <MobileNavBar />
-          {/* Desktop: show wallet connect */}
-          <div className="hidden md:flex md:items-center md:gap-4">
-            <WalletConnect />
-          </div>
-        </div>
+        <PageHeader pageLabel="Pool" showRefresh={false} />
 
         {loading ? (
           <div className="space-y-6">

@@ -87,7 +87,7 @@ export function CompactWalletConnect({ className = '' }: CompactWalletConnectPro
 }
 
 export function WalletConnect() {
-  return <ConnectButton showBalance={false} />;
+  return <ConnectButton showBalance={false} label="Connect" />;
 }
 
 

@@ -13,7 +13,7 @@ interface VaultoLogoProps {
  * Vaulto logo component that switches between dark and light variants
  * based on the current theme using CSS:
  * - Light mode: displays vaultodark.png (dark logo on light background)
- * - Dark mode: displays vaultolight.png (light logo on dark background)
+ * - Dark mode: displays vaultolight2.png (light logo on dark background)
  * 
  * No JavaScript switching - uses CSS to show/hide the appropriate logo
  */
@@ -36,7 +36,7 @@ export function VaultoLogo({
       />
       {/* Dark mode logo (light text) - hidden in light mode */}
       <Image
-        src="/vaultolight.png"
+        src="/vaultolight2.png"
         alt={alt}
         width={width}
         height={height}

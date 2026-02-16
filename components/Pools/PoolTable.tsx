@@ -6,6 +6,10 @@ import { PoolTableRow } from './PoolTableRow';
 import { formatCurrency, formatPercent } from '@/lib/utils/formatting';
 import { sortPools } from '@/lib/pools/utils';
 import { APRTooltip } from './APRTooltip';
+
+/** Set to true to show the Fees 24h column (sortable, with diff, and in totals row). */
+const SHOW_FEES_24H_COLUMN = false;
+
 interface PoolTableProps {
   pools: TablePool[];
   loading: boolean;
@@ -94,68 +98,66 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-900">
-              <th className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-sm font-semibold">Pool</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">
+            <tr className="bg-gray-100 dark:bg-gray-800">
+              <th className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 px-4 py-4 text-left text-base font-semibold rounded-tl-lg">Pool</th>
+              <th className="px-4 py-4 text-left text-base font-semibold">
                 <SortButton field={PoolSortFields.TVL}>TVL</SortButton>
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">
-                <SortButton field={PoolSortFields.Fees24h}>Fees 24h</SortButton>
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">
+              {SHOW_FEES_24H_COLUMN && (
+                <th className="px-4 py-4 text-left text-base font-semibold">
+                  <SortButton field={PoolSortFields.Fees24h}>Fees 24h</SortButton>
+                </th>
+              )}
+              <th className="px-4 py-4 text-left text-base font-semibold">
                 <SortButton field={PoolSortFields.Volume24h}>Volume 24h</SortButton>
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">
+              <th className="px-4 py-4 text-left text-base font-semibold">
                 <SortButton field={PoolSortFields.Fees30d}>Fees 30d</SortButton>
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">
+              <th className="px-4 py-4 text-left text-base font-semibold">
                 <SortButton field={PoolSortFields.Volume30D}>Volume 30d</SortButton>
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">
+              <th className="px-4 py-4 text-left text-base font-semibold rounded-tr-lg">
                 <SortButton field={PoolSortFields.Apr}>APR</SortButton>
               </th>
-              <th className="hidden md:table-cell px-4 py-3 text-left text-sm font-semibold">Action</th>
             </tr>
           </thead>
           <tbody>
             {[...Array(5)].map((_, index) => (
-              <tr key={index} className="border-b border-gray-200 dark:border-gray-600">
-                <td className="sticky left-0 z-10 bg-white dark:bg-gray-950 px-4 py-3">
+              <tr key={index} className={index % 2 === 1 ? 'bg-gray-50 dark:bg-gray-900' : ''}>
+                <td className={`sticky left-0 z-10 px-4 py-4 ${index % 2 === 1 ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-950'}`}>
                   <div className="animate-pulse">
                     <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-32"></div>
                   </div>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-4">
                   <div className="animate-pulse">
                     <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
                   </div>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="animate-pulse">
-                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-16"></div>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="animate-pulse">
-                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
+                {SHOW_FEES_24H_COLUMN && (
+                  <td className="px-4 py-4">
+                    <div className="animate-pulse">
+                      <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-16"></div>
+                    </div>
+                  </td>
+                )}
+                <td className="px-4 py-4">
                   <div className="animate-pulse">
                     <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
                   </div>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-4">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
+                  </div>
+                </td>
+                <td className="px-4 py-4">
                   <div className="animate-pulse">
                     <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-12"></div>
                   </div>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="animate-pulse">
-                    <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-16"></div>
-                  </div>
-                </td>
-                <td className="hidden md:table-cell px-4 py-3">
+                <td className="px-4 py-4">
                   <div className="animate-pulse">
                     <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-16"></div>
                   </div>
@@ -221,51 +223,53 @@ export function PoolTable({ pools, loading, error }: PoolTableProps) {
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="bg-gray-50 dark:bg-gray-900">
-            <th className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-sm font-semibold">Pool</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold">
+          <tr className="bg-gray-100 dark:bg-gray-800">
+            <th className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 px-4 py-4 text-left text-base font-semibold rounded-tl-lg">Pool</th>
+            <th className="px-4 py-4 text-left text-base font-semibold">
               <SortButton field={PoolSortFields.TVL}>TVL</SortButton>
             </th>
-            <th className="px-4 py-3 text-left text-sm font-semibold">
-              <SortButton field={PoolSortFields.Fees24h}>Fees 24h</SortButton>
-            </th>
-            <th className="px-4 py-3 text-left text-sm font-semibold">
+            {SHOW_FEES_24H_COLUMN && (
+              <th className="px-4 py-4 text-left text-base font-semibold">
+                <SortButton field={PoolSortFields.Fees24h}>Fees 24h</SortButton>
+              </th>
+            )}
+            <th className="px-4 py-4 text-left text-base font-semibold">
               <SortButton field={PoolSortFields.Volume24h}>Volume 24h</SortButton>
             </th>
-            <th className="px-4 py-3 text-left text-sm font-semibold">
+            <th className="px-4 py-4 text-left text-base font-semibold">
               <SortButton field={PoolSortFields.Fees30d}>Fees 30d</SortButton>
             </th>
-            <th className="px-4 py-3 text-left text-sm font-semibold">
+            <th className="px-4 py-4 text-left text-base font-semibold">
               <SortButton field={PoolSortFields.Volume30D}>Volume 30d</SortButton>
             </th>
-            <th className="px-4 py-3 text-left text-sm font-semibold">
+            <th className="px-4 py-4 text-left text-base font-semibold rounded-tr-lg">
               <SortButton field={PoolSortFields.Apr}>APR</SortButton>
             </th>
-            <th className="hidden md:table-cell px-4 py-3 text-left text-sm font-semibold">Action</th>
           </tr>
         </thead>
         <tbody>
-          {sortedPools.map((pool) => (
-            <PoolTableRow key={pool.hash} pool={pool} />
+          {sortedPools.map((pool, index) => (
+            <PoolTableRow key={pool.hash} pool={pool} showFees24hColumn={SHOW_FEES_24H_COLUMN} isAlternateRow={index % 2 === 1} />
           ))}
           {sortedPools.length > 0 && (
-            <tr className="bg-gray-100 dark:bg-gray-800 font-semibold border-t-2 border-gray-300 dark:border-gray-600">
-              <td className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-800 px-4 py-3 text-sm">
+            <tr className="bg-gray-100 dark:bg-gray-800 font-semibold">
+              <td className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-800 px-4 py-4 text-base">
                 Total
               </td>
-              <td className="px-4 py-3 text-sm">{formatCurrency(totals.tvl)}</td>
-              <td className="px-4 py-3 text-sm">{formatCurrency(totals.fees24h)}</td>
-              <td className="px-4 py-3 text-sm">{formatCurrency(totals.volume24h)}</td>
-              <td className="px-4 py-3 text-sm">{formatCurrency(totals.fees30d)}</td>
-              <td className="px-4 py-3 text-sm">{formatCurrency(totals.volume30d)}</td>
-              <td className="px-4 py-3 text-sm">
+              <td className="px-4 py-4 text-base">{formatCurrency(totals.tvl)}</td>
+              {SHOW_FEES_24H_COLUMN && (
+                <td className="px-4 py-4 text-base">{formatCurrency(totals.fees24h)}</td>
+              )}
+              <td className="px-4 py-4 text-base">{formatCurrency(totals.volume24h)}</td>
+              <td className="px-4 py-4 text-base">{formatCurrency(totals.fees30d)}</td>
+              <td className="px-4 py-4 text-base">{formatCurrency(totals.volume30d)}</td>
+              <td className="px-4 py-4 text-base">
                 {totals.tvl < 100 ? (
                   <APRTooltip apr="NA" showLowTvlWarning={true} />
                 ) : (
                   <APRTooltip apr={formatPercent(totals.apr)} />
                 )}
               </td>
-              <td className="hidden md:table-cell px-4 py-3 text-sm"></td>
             </tr>
           )}
         </tbody>
