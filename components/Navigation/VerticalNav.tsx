@@ -66,7 +66,6 @@ export function MobileNavBar() {
   const navItems = [
     { href: '/wallet', label: 'My Wallet', icon: HomeIcon },
     { href: '/', label: 'Tokenized Stocks', icon: EthIcon },
-    { href: '/sol', label: 'Private Equity', icon: SolIcon },
   ];
 
   return (
@@ -104,7 +103,6 @@ export function MobileNavBar() {
 const NAV_ITEMS = [
   { href: '/wallet', label: 'My Wallet', icon: HomeIcon },
   { href: '/', label: 'Tokenized Stocks', icon: EthIcon },
-  { href: '/sol', label: 'Private Equity', icon: SolIcon },
 ];
 
 /** Inline nav links for the page header (replaces side nav). */
