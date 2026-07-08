@@ -2,8 +2,8 @@ import { TablePool } from '@/lib/pools/types';
 import { calculateApr, calculate24hMetrics } from '@/lib/pools/utils';
 import { getTokenLogoUrl } from '@/lib/utils/tokenLogo';
 import { getSolanaTokenLogoUrl, getSolanaTokenName, getTrackedSolanaTokenMints } from '@/lib/utils/solanaTokenLogo';
+import { getOndoEquityAddresses } from '@/lib/pools/ondoTokens';
 
-const DEFAULT_QUERY_SIZE = 20;
 const DEFAULT_TICK_SPACING = 60;
 const REQUEST_TIMEOUT = 10000; // 10 seconds (reduced from 30s for faster failure detection)
 const MAX_RETRIES = 2;
@@ -29,26 +29,6 @@ function isUSDC(token: { address: string; symbol: string; name: string }): boole
     name === USDC_NAME
   );
 }
-
-// Tokenized stock addresses that have pools (chainId: 1 only)
-const TOKENIZED_STOCK_ADDRESSES = [
-  '0xf3e4872e6a4cf365888d93b6146a2baa7348f1a4', // SLVon - USDC/SLVon
-  '0x3632dea96a953c11dac2f00b4a05a32cd1063fae', // CRCLon - CRCLon/USDC
-  '0x2d1f7226bd1f780af6b9a49dcc0ae00e8df4bdee', // NVDAon - NVDAon/USDC
-  '0xf6b1117ec07684d3958cad8beb1b302bfd21103f', // TSLAon - USDC/TSLAon
-  '0xfedc5f4a6c38211c1338aa411018dfaf26612c08', // SPYon - USDC/SPYon
-  '0x0e397938c1aa0680954093495b70a9f5e2249aba', // QQQon - QQQon/USDC
-  '0xba47214edd2bb43099611b208f75e4b42fdcfedc', // GOOGLon - USDC/GOOGLon
-  '0x41765f0fcddc276309195166c7a62ae522fa09ef', // BABAon - BABAon/USDC
-  '0x992651bfeb9a0dcc4457610e284ba66d86489d4d', // TLTon - TLTon/USDC
-  '0x14c3abf95cb9c93a8b82c1cdcb76d72cb87b2d4c', // AAPLon - AAPLon/USDC
-  '0xf042cfa86cf1d598a75bdb55c3507a1f39f9493b', // COINon - USDC/COINon
-  '0x998f02a9e343ef6e3e6f28700d5a20f839fd74e6', // HOODon - HOODon/USDC
-  '0xb812837b81a3a6b81d7cd74cfb19a7f2784555e5', // MSFTon - USDC/MSFTon
-  '0xcabd955322dfbf94c084929ac5e9eca3feb5556f', // MSTRon - USDC/MSTRon
-  '0xd8e26fcc879b30cb0a0b543925a2b3500f074d81', // NKEon - USDC/NKEon
-  '0xbc843b147db4c7e00721d76037b8b92e13afe13f', // SPGIon - USDC/SPGIon
-].map(addr => addr.toLowerCase());
 
 // Common Solana token addresses
 const SOLANA_COMMON_TOKENS: Record<string, { symbol: string; name: string; decimals: number }> = {
@@ -107,14 +87,17 @@ interface MeteoraPoolResponse {
   base_fee_percentage: string;
 }
 
-const TOP_V3_POOLS_QUERY = `
-  query TopV3Pools($first: Int!, $tokenAddress: String!) {
+// Batched query: fetches every pool that pairs any of the supplied Ondo token
+// addresses, ordered by TVL. A single request covers the whole token universe.
+const ONDO_POOLS_QUERY = `
+  query OndoPools($tokens: [String!]!, $first: Int!, $skip: Int!) {
     pools(
       first: $first
+      skip: $skip
       where: {
         or: [
-          { token0_: { id: $tokenAddress } }
-          { token1_: { id: $tokenAddress } }
+          { token0_in: $tokens }
+          { token1_in: $tokens }
         ]
       }
       orderBy: totalValueLockedUSD
@@ -382,14 +365,132 @@ async function fetchPoolPair(
 }
 
 /**
- * Fetches tokenized stock pools from GraphQL
+ * Converts a raw Uniswap V3 subgraph pool into our TablePool shape, deriving
+ * rolling 24h / 30d volume + fees, APR and TVL change from the nested day/hour
+ * data supplied by the subgraph.
  */
-export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
-  if (TOKENIZED_STOCK_ADDRESSES.length === 0) {
-    return [];
+function mapRawPoolToTablePool(pool: PoolResponse['pools'][number]): TablePool {
+  const tvl = parseFloat(pool.totalValueLockedUSD || '0');
+
+  // Calculate 24h and 30d volumes and fees from poolDayData
+  const dayData = pool.poolDayData || [];
+
+  // Calculate true rolling 24h volume and fees from hourly data if available
+  let volume24h: number;
+  let fees24h: number;
+  let fees24HDiff: number | undefined;
+
+  if (pool.poolHourData && pool.poolHourData.length > 0) {
+    // Use hourly data for accurate rolling 24h calculation
+    const metrics = calculate24hMetrics(pool.poolHourData);
+    volume24h = metrics.volume24h;
+    fees24h = metrics.fees24h;
+    fees24HDiff = metrics.fees24hDiff;
+  } else {
+    // Fallback to daily data (current day)
+    volume24h = dayData.length > 0
+      ? parseFloat(dayData[0].volumeUSD || '0')
+      : 0;
+    fees24h = dayData.length > 0
+      ? parseFloat(dayData[0].feesUSD || '0')
+      : 0;
+
+    // Calculate fees diff using daily data as fallback
+    if (dayData.length >= 2) {
+      const previousFees = parseFloat(dayData[1].feesUSD || '0');
+      const diff = fees24h - previousFees;
+      if (!isNaN(diff) && isFinite(diff)) {
+        fees24HDiff = diff;
+      }
+    }
   }
 
-  console.log(`🏊 [Pool Fetchers] Fetching tokenized stock pools for ${TOKENIZED_STOCK_ADDRESSES.length} tokens...`);
+  // 30d volume: sum of last 30 days
+  const volume30d = dayData.reduce((sum, day) => {
+    return sum + parseFloat(day.volumeUSD || '0');
+  }, 0);
+
+  // 30d fees: sum of last 30 days
+  const fees30d = dayData.reduce((sum, day) => {
+    return sum + parseFloat(day.feesUSD || '0');
+  }, 0);
+
+  // Calculate TVL 24h percentage change
+  // Compare most recent day's TVL with previous day's TVL (24h ago)
+  let tvl24HChange: number | undefined;
+  if (dayData.length >= 2) {
+    const currentDayTvl = parseFloat(dayData[0].tvlUSD || '0');
+    const previousDayTvl = parseFloat(dayData[1].tvlUSD || '0');
+    if (previousDayTvl > 0 && currentDayTvl > 0) {
+      const change = ((currentDayTvl - previousDayTvl) / previousDayTvl) * 100;
+      // Only include if there's a meaningful change (|change| > 0.001%)
+      if (Math.abs(change) > 0.001 && !isNaN(change) && isFinite(change)) {
+        tvl24HChange = change;
+      }
+    }
+  }
+
+  const token0Address = pool.token0.id.split('-')[0];
+  const token1Address = pool.token1.id.split('-')[0];
+
+  return {
+    hash: pool.id,
+    token0: {
+      id: pool.token0.id,
+      name: pool.token0.name,
+      symbol: pool.token0.symbol,
+      decimals: pool.token0.decimals,
+      address: token0Address,
+      chain: 'ETHEREUM',
+      logoURI: getTokenLogoUrl(token0Address, 1),
+    },
+    token1: {
+      id: pool.token1.id,
+      name: pool.token1.name,
+      symbol: pool.token1.symbol,
+      decimals: pool.token1.decimals,
+      address: token1Address,
+      chain: 'ETHEREUM',
+      logoURI: getTokenLogoUrl(token1Address, 1),
+    },
+    tvl,
+    volume24h,
+    volume30d,
+    fees24h,
+    fees30d,
+    volOverTvl: undefined,
+    apr: calculateApr({
+      fees30d,
+      tvl,
+    }),
+    feeTier: {
+      feeAmount: pool.feeTier,
+      tickSpacing: DEFAULT_TICK_SPACING,
+      isDynamic: false,
+    },
+    protocolVersion: 'V3',
+    tvl24HChange,
+    fees24HDiff,
+  } as TablePool;
+}
+
+/**
+ * Fetches pools for the full Ondo tokenized-equity universe from the Uniswap V3
+ * subgraph. Discovers every Ondo token that currently has USDC liquidity on
+ * Uniswap (rather than a hand-maintained shortlist) via a single batched query,
+ * then returns the highest-TVL USDC pool for each such token.
+ */
+export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
+  // The set of candidate Ondo token addresses (refreshed from the official
+  // Ondo token list at runtime, with a vendored fallback).
+  const ondoAddresses = await getOndoEquityAddresses(1);
+  if (ondoAddresses.length === 0) {
+    return [];
+  }
+  // getOndoEquityAddresses() already returns lowercased addresses.
+  const ondoAddressSet = new Set(ondoAddresses);
+
+  console.log(`🏊 [Pool Fetchers] Fetching Uniswap pools for ${ondoAddresses.length} Ondo tokens...`);
 
   // Get GraphQL endpoint and auth (per The Graph docs: managing-api-keys)
   const graphApiKey = process.env.NEXT_PUBLIC_THE_GRAPH_API_KEY || process.env.THE_GRAPH_API_KEY;
@@ -410,177 +511,88 @@ export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
     }
   }
 
-  // Fetch pools for all tokens in parallel
-  const poolPromises = TOKENIZED_STOCK_ADDRESSES.map(async (tokenAddress) => {
-    try {
-      const response = await fetchWithTimeoutAndRetry(graphqlUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          query: TOP_V3_POOLS_QUERY,
-          variables: {
-            first: DEFAULT_QUERY_SIZE,
-            tokenAddress: tokenAddress.toLowerCase(),
-          },
-        }),
-      });
+  // Page through every pool that pairs an Ondo token. Ordered by TVL desc, so
+  // in practice a single page covers the entire universe.
+  const PAGE_SIZE = 1000;
+  const MAX_PAGES = 6; // subgraph skip cap is 5000; 6 pages is a safety ceiling
+  const rawPools: PoolResponse['pools'] = [];
 
-      if (!response.ok) {
-        throw new Error(`GraphQL request failed: ${response.statusText}`);
-      }
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const skip = page * PAGE_SIZE;
+    const response = await fetchWithTimeoutAndRetry(graphqlUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        query: ONDO_POOLS_QUERY,
+        variables: {
+          tokens: ondoAddresses,
+          first: PAGE_SIZE,
+          skip,
+        },
+      }),
+    });
 
-      const result = await response.json();
-
-      if (result.errors && result.errors.length > 0) {
-        console.error(`❌ [Pool Fetchers] GraphQL errors for token ${tokenAddress}:`, result.errors);
-        const msg = String((result.errors[0] as { message?: string })?.message ?? '');
-        if (
-          msg.includes('bad indexers') ||
-          msg.includes('indexing_error') ||
-          msg.includes('auth error') ||
-          msg.includes('too far behind')
-        ) {
-          const err = new Error(
-            `Subgraph unavailable: ${msg.slice(0, 120)}. See TOKENIZED_STOCK_POOLS_API_FAILURE.md.`
-          ) as Error & { statusCode?: number };
-          err.statusCode = 503;
-          throw err;
-        }
-      }
-
-      const responseData: PoolResponse = result.data || { pools: [] };
-      const poolCount = responseData?.pools?.length || 0;
-      
-      if (poolCount > 0) {
-        console.log(`✅ [Pool Fetchers] Found ${poolCount} pools for token ${tokenAddress}`);
-      }
-
-      // Convert to TablePool format and get the highest TVL pool
-      const pools: TablePool[] = (responseData?.pools || [])
-        .map((pool) => {
-          const tvl = parseFloat(pool.totalValueLockedUSD || '0');
-          
-          // Calculate 24h and 30d volumes and fees from poolDayData
-          const dayData = pool.poolDayData || [];
-          
-          // Calculate true rolling 24h volume and fees from hourly data if available
-          let volume24h: number;
-          let fees24h: number;
-          let fees24HDiff: number | undefined;
-
-          if (pool.poolHourData && pool.poolHourData.length > 0) {
-            // Use hourly data for accurate rolling 24h calculation
-            const metrics = calculate24hMetrics(pool.poolHourData);
-            volume24h = metrics.volume24h;
-            fees24h = metrics.fees24h;
-            fees24HDiff = metrics.fees24hDiff;
-          } else {
-            // Fallback to daily data (current day)
-            volume24h = dayData.length > 0 
-              ? parseFloat(dayData[0].volumeUSD || '0')
-              : 0;
-            fees24h = dayData.length > 0
-              ? parseFloat(dayData[0].feesUSD || '0')
-              : 0;
-            
-            // Calculate fees diff using daily data as fallback
-            if (dayData.length >= 2) {
-              const previousFees = parseFloat(dayData[1].feesUSD || '0');
-              const diff = fees24h - previousFees;
-              if (!isNaN(diff) && isFinite(diff)) {
-                fees24HDiff = diff;
-              }
-            }
-          }
-          
-          // 30d volume: sum of last 30 days
-          const volume30d = dayData.reduce((sum, day) => {
-            return sum + parseFloat(day.volumeUSD || '0');
-          }, 0);
-          
-          // 30d fees: sum of last 30 days
-          const fees30d = dayData.reduce((sum, day) => {
-            return sum + parseFloat(day.feesUSD || '0');
-          }, 0);
-
-          // Calculate TVL 24h percentage change
-          // Compare most recent day's TVL with previous day's TVL (24h ago)
-          let tvl24HChange: number | undefined;
-          if (dayData.length >= 2) {
-            const currentDayTvl = parseFloat(dayData[0].tvlUSD || '0');
-            const previousDayTvl = parseFloat(dayData[1].tvlUSD || '0');
-            if (previousDayTvl > 0 && currentDayTvl > 0) {
-              const change = ((currentDayTvl - previousDayTvl) / previousDayTvl) * 100;
-              // Only include if there's a meaningful change (|change| > 0.001%)
-              if (Math.abs(change) > 0.001 && !isNaN(change) && isFinite(change)) {
-                tvl24HChange = change;
-              }
-            }
-          }
-
-          const token0Address = pool.token0.id.split('-')[0];
-          const token1Address = pool.token1.id.split('-')[0];
-
-          return {
-            hash: pool.id,
-            token0: {
-              id: pool.token0.id,
-              name: pool.token0.name,
-              symbol: pool.token0.symbol,
-              decimals: pool.token0.decimals,
-              address: token0Address,
-              chain: 'ETHEREUM',
-              logoURI: getTokenLogoUrl(token0Address, 1),
-            },
-            token1: {
-              id: pool.token1.id,
-              name: pool.token1.name,
-              symbol: pool.token1.symbol,
-              decimals: pool.token1.decimals,
-              address: token1Address,
-              chain: 'ETHEREUM',
-              logoURI: getTokenLogoUrl(token1Address, 1),
-            },
-            tvl,
-            volume24h,
-            volume30d,
-            fees24h,
-            fees30d,
-            volOverTvl: undefined,
-            apr: calculateApr({
-              fees30d,
-              tvl,
-            }),
-            feeTier: {
-              feeAmount: pool.feeTier,
-              tickSpacing: DEFAULT_TICK_SPACING,
-              isDynamic: false,
-            },
-            protocolVersion: 'V3',
-            tvl24HChange,
-            fees24HDiff,
-          } as TablePool;
-        })
-        // Filter to only include pools with TVL > 0 and that involve USDC
-        .filter((pool) => {
-          const hasUSDC = isUSDC(pool.token0) || isUSDC(pool.token1);
-          return hasUSDC && pool.tvl > 0;
-        });
-
-      // Return the pool with the highest TVL for this token, or null if no valid pools
-      return pools.length > 0 ? pools[0] : null;
-    } catch (err) {
-      console.error(`❌ [Pool Fetchers] Error fetching pools for token ${tokenAddress}:`, err);
-      if ((err as Error & { statusCode?: number })?.statusCode === 503) throw err;
-      return null;
+    if (!response.ok) {
+      throw new Error(`GraphQL request failed: ${response.statusText}`);
     }
-  });
 
-  const pools = await Promise.all(poolPromises);
-  const validPools = pools.filter((pool): pool is TablePool => pool !== null);
-  
-  console.log(`✅ [Pool Fetchers] Successfully fetched pools for ${validPools.length} out of ${TOKENIZED_STOCK_ADDRESSES.length} tokenized stocks`);
-  
+    const result = await response.json();
+
+    if (result.errors && result.errors.length > 0) {
+      console.error('❌ [Pool Fetchers] GraphQL errors:', result.errors);
+      const msg = String((result.errors[0] as { message?: string })?.message ?? '');
+      if (
+        msg.includes('bad indexers') ||
+        msg.includes('indexing_error') ||
+        msg.includes('auth error') ||
+        msg.includes('too far behind')
+      ) {
+        const err = new Error(
+          `Subgraph unavailable: ${msg.slice(0, 120)}. See TOKENIZED_STOCK_POOLS_API_FAILURE.md.`
+        ) as Error & { statusCode?: number };
+        err.statusCode = 503;
+        throw err;
+      }
+    }
+
+    const pagePools = (result.data as PoolResponse | undefined)?.pools ?? [];
+    rawPools.push(...pagePools);
+
+    if (pagePools.length < PAGE_SIZE) break;
+  }
+
+  console.log(`📊 [Pool Fetchers] Received ${rawPools.length} Ondo-paired pools from subgraph`);
+
+  // Map to TablePool, keep only USDC-paired pools with TVL > 0 that actually
+  // include an Ondo token, then keep the highest-TVL pool per Ondo token.
+  const poolsByToken = new Map<string, TablePool>();
+
+  for (const rawPool of rawPools) {
+    try {
+      const pool = mapRawPoolToTablePool(rawPool);
+
+      const hasUSDC = isUSDC(pool.token0) || isUSDC(pool.token1);
+      if (!hasUSDC || pool.tvl <= 0) continue;
+
+      const token0IsOndo = ondoAddressSet.has(pool.token0.address.toLowerCase());
+      const token1IsOndo = ondoAddressSet.has(pool.token1.address.toLowerCase());
+      if (!token0IsOndo && !token1IsOndo) continue;
+
+      const ondoAddress = (token0IsOndo ? pool.token0.address : pool.token1.address).toLowerCase();
+      const existing = poolsByToken.get(ondoAddress);
+      if (!existing || pool.tvl > existing.tvl) {
+        poolsByToken.set(ondoAddress, pool);
+      }
+    } catch (err) {
+      // Skip a single malformed pool rather than failing the whole batch.
+      console.warn(`⚠️ [Pool Fetchers] Skipping malformed pool ${rawPool?.id}:`, err);
+    }
+  }
+
+  const validPools = Array.from(poolsByToken.values());
+
+  console.log(`✅ [Pool Fetchers] Found ${validPools.length} Ondo tokens with USDC liquidity on Uniswap`);
+
   return validPools;
 }
 
