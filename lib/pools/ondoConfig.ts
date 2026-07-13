@@ -32,10 +32,15 @@ export const ONDO_TOKEN_LIST_URL =
   'https://raw.githubusercontent.com/ondoprotocol/ondo-global-markets-token-list/main/tokenlist.json';
 
 /**
- * Ethereum mainnet chain id — the only chain with a Uniswap subgraph wired up
- * in this project. The Ondo list also ships BNB Chain (56) addresses.
+ * Ethereum mainnet chain id — served by the Uniswap V3 subgraph.
  */
 export const ETHEREUM_CHAIN_ID = 1;
+
+/**
+ * BNB Smart Chain id. Ondo also ships tokenized equities here; their liquidity
+ * lives on PancakeSwap (V2/V3) and Uniswap and is read via Dexscreener.
+ */
+export const BSC_CHAIN_ID = 56;
 
 /**
  * Ondo tokens that are NOT public equities/ETFs and must be excluded from the

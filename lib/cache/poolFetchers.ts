@@ -1,8 +1,9 @@
-import { TablePool } from '@/lib/pools/types';
+import { TablePool, Token } from '@/lib/pools/types';
 import { calculateApr, calculate24hMetrics } from '@/lib/pools/utils';
 import { getTokenLogoUrl } from '@/lib/utils/tokenLogo';
 import { getSolanaTokenLogoUrl, getSolanaTokenName, getTrackedSolanaTokenMints } from '@/lib/utils/solanaTokenLogo';
 import { getOndoEquityAddresses } from '@/lib/pools/ondoTokens';
+import { BSC_CHAIN_ID } from '@/lib/pools/ondoConfig';
 
 const DEFAULT_TICK_SPACING = 60;
 const REQUEST_TIMEOUT = 10000; // 10 seconds (reduced from 30s for faster failure detection)
@@ -594,6 +595,171 @@ export async function fetchTokenizedStockPools(): Promise<TablePool[]> {
   console.log(`✅ [Pool Fetchers] Found ${validPools.length} Ondo tokens with USDC liquidity on Uniswap`);
 
   return validPools;
+}
+
+// ---------------------------------------------------------------------------
+// BNB Smart Chain (Ondo equities on PancakeSwap / Uniswap) via Dexscreener
+// ---------------------------------------------------------------------------
+//
+// Unlike Ethereum, BSC Ondo liquidity is fragmented across PancakeSwap V2, V3
+// and Uniswap and is not covered by a single reliable subgraph. Dexscreener
+// already aggregates every DEX pair for a token address, so we use its public
+// REST API (the same "aggregator REST" shape used for Solana/Meteora) to find,
+// for each Ondo BSC token, its deepest stablecoin-paired pool.
+
+/** USD stablecoins on BNB Chain that Ondo equities pair against (lowercased). */
+const BSC_STABLES: Record<string, string> = {
+  '0x55d398326f99059ff775485246999027b3197955': 'USDT', // Binance-Peg USDT
+  '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d': 'USDC', // Binance-Peg USDC
+  '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d': 'USD1', // World Liberty USD1
+  '0x1f8955e640cbd9abc3c3bb408c9e2e1f5f20dfe6': 'USDon', // Ondo U.S. Dollar Token
+};
+
+/**
+ * Drop dust pools: below this liquidity the table can't compute a meaningful
+ * APR (see PoolTableRow's `< $100 → "NA"` rule), so they add noise, not signal.
+ */
+const BSC_MIN_LIQUIDITY_USD = 100;
+
+/**
+ * Nominal swap-fee rate used to *estimate* fees for BSC pools. Dexscreener does
+ * not expose per-pool fees, so we approximate them from 24h volume using
+ * PancakeSwap's common 0.25% tier. This is clearly an estimate (like the Solana
+ * 30d approximation) and only affects the derived APR figure.
+ */
+const BSC_ESTIMATED_FEE_RATE = 0.0025;
+
+const DEXSCREENER_TOKENS_URL = 'https://api.dexscreener.com/latest/dex/tokens';
+const DEXSCREENER_BATCH_SIZE = 30; // max token addresses per Dexscreener request
+
+interface DexscreenerToken {
+  address: string;
+  name: string;
+  symbol: string;
+}
+
+interface DexscreenerPair {
+  chainId: string;
+  dexId?: string;
+  labels?: string[];
+  pairAddress: string;
+  baseToken: DexscreenerToken;
+  quoteToken: DexscreenerToken;
+  volume?: { h24?: number };
+  liquidity?: { usd?: number };
+}
+
+function chunkArray<T>(arr: readonly T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+/** Builds a TablePool from a Dexscreener BSC pair, given which side is Ondo. */
+function mapDexscreenerPairToTablePool(pair: DexscreenerPair, ondoAddress: string): TablePool {
+  const isBaseOndo = pair.baseToken.address.toLowerCase() === ondoAddress;
+  const ondoTok = isBaseOndo ? pair.baseToken : pair.quoteToken;
+  const stableTok = isBaseOndo ? pair.quoteToken : pair.baseToken;
+
+  const tvl = pair.liquidity?.usd ?? 0;
+  const volume24h = pair.volume?.h24 ?? 0;
+  // Dexscreener only exposes rolling 24h volume; approximate longer windows.
+  const volume30d = volume24h * 30;
+  const fees24h = volume24h * BSC_ESTIMATED_FEE_RATE;
+  const fees30d = fees24h * 30;
+
+  const isV2 = (pair.labels ?? []).some((l) => l.toLowerCase() === 'v2');
+
+  const buildToken = (t: DexscreenerToken): Token => ({
+    id: t.address,
+    name: t.name,
+    symbol: t.symbol,
+    decimals: 18,
+    address: t.address,
+    chain: 'BSC',
+    logoURI: getTokenLogoUrl(t.address, BSC_CHAIN_ID),
+  });
+
+  return {
+    hash: pair.pairAddress,
+    token0: buildToken(ondoTok),
+    token1: buildToken(stableTok),
+    tvl,
+    volume24h,
+    volume30d,
+    fees24h,
+    fees30d,
+    volOverTvl: undefined,
+    apr: calculateApr({ fees30d, tvl }),
+    feeTier: {
+      feeAmount: 2500, // nominal 0.25% (Dexscreener does not expose the tier)
+      tickSpacing: DEFAULT_TICK_SPACING,
+      isDynamic: false,
+    },
+    protocolVersion: isV2 ? 'V2' : 'V3',
+  } as TablePool;
+}
+
+/**
+ * Fetches the deepest stablecoin-paired DEX pool on BNB Chain for each Ondo
+ * tokenized-equity token, via the Dexscreener aggregator API. Best-effort:
+ * individual batch failures are dropped rather than failing the whole set, so
+ * callers can safely treat this as additive to the Ethereum pools.
+ */
+export async function fetchBscTokenizedStockPools(): Promise<TablePool[]> {
+  const ondoAddresses = await getOndoEquityAddresses(BSC_CHAIN_ID);
+  if (ondoAddresses.length === 0) return [];
+  const ondoSet = new Set(ondoAddresses); // already lowercased
+
+  console.log(`🏊 [Pool Fetchers] Fetching BSC liquidity for ${ondoAddresses.length} Ondo tokens via Dexscreener...`);
+
+  const batches = chunkArray(ondoAddresses, DEXSCREENER_BATCH_SIZE);
+  const responses = await Promise.allSettled(
+    batches.map((batch) =>
+      fetchWithTimeoutAndRetry(`${DEXSCREENER_TOKENS_URL}/${batch.join(',')}`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      }).then((r) => (r.ok ? (r.json() as Promise<{ pairs?: DexscreenerPair[] }>) : null))
+    )
+  );
+
+  // Keep the highest-liquidity stable-paired pool per Ondo token.
+  const bestByToken = new Map<string, DexscreenerPair>();
+
+  for (const res of responses) {
+    if (res.status !== 'fulfilled' || !res.value) continue;
+    for (const pair of res.value.pairs ?? []) {
+      if (pair.chainId !== 'bsc' || !pair.baseToken || !pair.quoteToken) continue;
+
+      const base = pair.baseToken.address.toLowerCase();
+      const quote = pair.quoteToken.address.toLowerCase();
+
+      let ondoAddress: string | null = null;
+      if (ondoSet.has(base) && BSC_STABLES[quote]) ondoAddress = base;
+      else if (ondoSet.has(quote) && BSC_STABLES[base]) ondoAddress = quote;
+      if (!ondoAddress) continue;
+
+      const liq = pair.liquidity?.usd ?? 0;
+      if (liq < BSC_MIN_LIQUIDITY_USD) continue;
+
+      const existing = bestByToken.get(ondoAddress);
+      if (!existing || liq > (existing.liquidity?.usd ?? 0)) {
+        bestByToken.set(ondoAddress, pair);
+      }
+    }
+  }
+
+  const pools: TablePool[] = [];
+  for (const [ondoAddress, pair] of bestByToken) {
+    try {
+      pools.push(mapDexscreenerPairToTablePool(pair, ondoAddress));
+    } catch (err) {
+      console.warn(`⚠️ [Pool Fetchers] Skipping malformed BSC pair ${pair?.pairAddress}:`, err);
+    }
+  }
+
+  console.log(`✅ [Pool Fetchers] Found ${pools.length} Ondo tokens with stablecoin liquidity on BSC`);
+  return pools;
 }
 
 /**

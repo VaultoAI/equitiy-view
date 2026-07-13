@@ -9,16 +9,21 @@ interface PoolDescriptionProps {
   alwaysShowBoth?: boolean; // Force showing both tokens even on mobile
 }
 
+// Stablecoins the tokenized equities pair against, across chains (USDC on
+// Ethereum, USDT/USD1/USDon on BNB Chain, etc.).
+const STABLE_SYMBOLS = new Set(['USDC', 'USD COIN', 'USDT', 'USD1', 'USDON', 'USDD']);
+const isStable = (symbol: string) => STABLE_SYMBOLS.has((symbol || '').toUpperCase());
+
 export function PoolDescription({ token0, token1, alwaysShowBoth = false }: PoolDescriptionProps) {
-  // Check if USDC is present - show only tokenized stock on mobile, both on desktop (unless alwaysShowBoth is true)
-  const isToken0USDC = token0.symbol === 'USDC' || token0.symbol === 'USD Coin';
-  const isToken1USDC = token1.symbol === 'USDC' || token1.symbol === 'USD Coin';
-  
-  // Determine which token is the non-USDC token (tokenized stock)
+  // Check if a stablecoin is present - show only tokenized stock on mobile, both on desktop (unless alwaysShowBoth is true)
+  const isToken0USDC = isStable(token0.symbol);
+  const isToken1USDC = isStable(token1.symbol);
+
+  // Determine which token is the non-stable token (tokenized stock)
   const displayToken = isToken0USDC ? token1 : (isToken1USDC ? token0 : null);
   const usdcToken = isToken0USDC ? token0 : (isToken1USDC ? token1 : null);
-  
-  // If neither is USDC, show both tokens as before
+
+  // If neither is a stablecoin, show both tokens as before
   if (!isToken0USDC && !isToken1USDC) {
     return (
       <div className="flex items-center gap-2">

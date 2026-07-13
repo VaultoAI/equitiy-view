@@ -18,10 +18,13 @@ interface TokenLogoProps {
 export function TokenLogo({ token, size = 24, className = '' }: TokenLogoProps) {
   const isSolana = token.chain === 'SOLANA';
   const solanaLogoUrl = isSolana ? getSolanaTokenLogoUrl(token.address) : null;
-  
+
+  // EVM chains resolve logos from TrustWallet by chain id (BSC = 56, else Ethereum).
+  const evmChainId = token.chain === 'BSC' ? 56 : 1;
+
   const { logoUrl: ethereumLogoUrl, isLoading } = useTokenLogo({
     tokenAddress: token.address,
-    chainId: token.chain === 'ETHEREUM' ? 1 : undefined,
+    chainId: evmChainId,
     enabled: !!token.address && !isSolana,
   });
 

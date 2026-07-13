@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchTokenizedStockPools } from '@/lib/cache/poolFetchers';
+import { fetchTokenizedStockPools, fetchBscTokenizedStockPools } from '@/lib/cache/poolFetchers';
 import { TablePool } from '@/lib/pools/types';
 
 export const runtime = 'nodejs';
@@ -7,10 +7,20 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Always fetch fresh data - no caching
+    // Always fetch fresh data - no caching.
+    // Ethereum (Uniswap subgraph) is authoritative and keeps its existing error
+    // semantics; BSC (Dexscreener) is additive and best-effort, so a BSC failure
+    // never breaks the page.
     console.log(`🔄 [Tokenized Stock Pools API] Fetching fresh data...`);
-    const pools = await fetchTokenizedStockPools();
-    console.log(`✅ [Tokenized Stock Pools API] Fetched ${pools.length} pools`);
+    const [ethPools, bscPools] = await Promise.all([
+      fetchTokenizedStockPools(),
+      fetchBscTokenizedStockPools().catch((err) => {
+        console.warn('⚠️ [Tokenized Stock Pools API] BSC fetch failed, returning Ethereum pools only:', err);
+        return [] as TablePool[];
+      }),
+    ]);
+    const pools = [...ethPools, ...bscPools];
+    console.log(`✅ [Tokenized Stock Pools API] Fetched ${pools.length} pools (${ethPools.length} ETH + ${bscPools.length} BSC)`);
     
     return NextResponse.json(
       { pools },

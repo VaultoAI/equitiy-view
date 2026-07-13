@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { TablePool } from '@/lib/pools/types';
 import { PoolDescription } from './PoolDescription';
+import { ChainBadge } from './ChainBadge';
 import { formatCurrency, formatPercent } from '@/lib/utils/formatting';
 import { APRTooltip } from './APRTooltip';
 
@@ -18,23 +19,27 @@ interface PoolTableRowProps {
 export function PoolTableRow({ pool, chainId = 1, showFees24hColumn = true, isAlternateRow = false }: PoolTableRowProps) {
   // Determine chain from token0 or token1
   const chain = pool.token0?.chain || pool.token1?.chain || 'ETHEREUM';
-  const isSolana = chain === 'SOLANA';
-  const chainName = isSolana ? 'solana' : 'ethereum';
-  const poolLink = `/pools/${chainName}/${pool.hash}`;
+  // Only Ethereum has a pool-details page wired up; other chains are not
+  // clickable (no detail route for BSC/Solana pool hashes).
+  const isClickable = chain === 'ETHEREUM';
+  const poolLink = `/pools/ethereum/${pool.hash}`;
 
   const rowBg = isAlternateRow ? 'bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-800';
   const stickyBg = isAlternateRow ? 'bg-gray-50 dark:bg-gray-900 group-hover:bg-gray-100 dark:group-hover:bg-gray-800' : 'bg-white dark:bg-gray-950 group-hover:bg-gray-50 dark:group-hover:bg-gray-800';
 
   return (
-    <tr className={`${rowBg} group ${isSolana ? '' : 'cursor-pointer'}`}>
+    <tr className={`${rowBg} group ${isClickable ? 'cursor-pointer' : ''}`}>
       <td className={`sticky left-0 z-10 ${stickyBg} px-4 py-4 text-sm md:text-base`}>
-        {isSolana ? (
-          <PoolDescription token0={pool.token0} token1={pool.token1} />
-        ) : (
-          <Link href={poolLink}>
+        <div className="flex items-center gap-2">
+          {isClickable ? (
+            <Link href={poolLink}>
+              <PoolDescription token0={pool.token0} token1={pool.token1} />
+            </Link>
+          ) : (
             <PoolDescription token0={pool.token0} token1={pool.token1} />
-          </Link>
-        )}
+          )}
+          <ChainBadge chain={chain} />
+        </div>
       </td>
       <td className="px-4 py-4 text-sm md:text-base font-medium">
         {formatCurrency(pool.tvl)}
