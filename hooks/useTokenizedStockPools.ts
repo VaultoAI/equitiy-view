@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { TablePool, PoolTableSortState, PoolSortFields } from '@/lib/pools/types';
 import { sortPools } from '@/lib/pools/sorting';
 
@@ -9,7 +9,9 @@ export function useTokenizedStockPools(sortState: PoolTableSortState = {
   sortBy: PoolSortFields.TVL,
   sortDirection: 'desc',
 }) {
-  // Fetch pools from API route - always fetch fresh data
+  // Fetch pools from API route. The server serves a stale-while-revalidate
+  // cache, so keep results in memory here too: show cached pools instantly on
+  // remount/navigation while a background refetch updates them.
   const { data: allPoolsData, isLoading: poolsLoading, error: poolsError } = useQuery({
     queryKey: ['tokenizedStockPools'],
     queryFn: async () => {
@@ -17,7 +19,6 @@ export function useTokenizedStockPools(sortState: PoolTableSortState = {
 
       const response = await fetch('/api/cache/tokenized-stock-pools', {
         method: 'GET',
-        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -33,14 +34,14 @@ export function useTokenizedStockPools(sortState: PoolTableSortState = {
 
       const data = await response.json();
       const pools: TablePool[] = data.pools || [];
-      
+
       console.log(`✅ [Tokenized Stock Pools] Fetched fresh data (${pools.length} pools)`);
-      
+
       return pools;
     },
-    staleTime: 0, // Always consider data stale - fetch fresh on every mount
-    gcTime: 0, // Don't cache in memory
-    refetchOnMount: 'always', // Always refetch when component mounts
+    staleTime: 30_000, // Treat data as fresh for 30s (matches server cache window)
+    gcTime: 5 * 60_000, // Keep in memory 5min so remounts render instantly
+    placeholderData: keepPreviousData, // Show prior pools during background refetch (no blank spinner)
   });
 
   const allPools = allPoolsData || [];
